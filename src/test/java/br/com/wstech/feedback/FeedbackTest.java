@@ -15,12 +15,19 @@ class FeedbackTest {
     }
 
     @Test void construtoresPadraoEstaoDisponiveisParaLambda() throws Exception {
-        ReceberAvaliacao receber = new ReceberAvaliacao();
-        assertNotNull(receber);
-        var campo = ReceberAvaliacao.class.getDeclaredField("ids");
-        campo.setAccessible(true);
-        assertNotNull(((java.util.function.Supplier<?>) campo.get(receber)).get());
-        assertNotNull(new NotificarUrgencia());
-        assertNotNull(new RelatorioSemanal());
+        String anterior = System.getProperty("aws.region");
+        System.setProperty("aws.region", "us-east-2");
+        try {
+            ReceberAvaliacao receber = new ReceberAvaliacao();
+            assertNotNull(receber);
+            var campo = ReceberAvaliacao.class.getDeclaredField("ids");
+            campo.setAccessible(true);
+            assertNotNull(((java.util.function.Supplier<?>) campo.get(receber)).get());
+            assertNotNull(new NotificarUrgencia());
+            assertNotNull(new RelatorioSemanal());
+        } finally {
+            if (anterior == null) System.clearProperty("aws.region");
+            else System.setProperty("aws.region", anterior);
+        }
     }
 }

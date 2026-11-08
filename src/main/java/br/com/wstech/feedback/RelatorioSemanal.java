@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -52,7 +53,7 @@ public final class RelatorioSemanal implements RequestHandler<Map<String, Object
             linhas.add("Data: %s | Nota: %d | Urgencia: %s | Descricao: %s".formatted(
                     feedback.enviadoEm(), feedback.nota(), feedback.urgencia(), feedback.descricao()));
         }
-        String resumo = "Semana: %s%nQuantidade: %d%nMedia: %.2f%nPor dia: %s%nPor urgencia: %s%n".formatted(
+        String resumo = String.format(Locale.forLanguageTag("pt-BR"), "Semana: %s%nQuantidade: %d%nMedia: %.2f%nPor dia: %s%nPor urgencia: %s%n",
                 semana, avaliacoes.size(), avaliacoes.isEmpty() ? 0.0 : (double) soma / avaliacoes.size(),
                 new java.util.TreeMap<>(porDia), new java.util.TreeMap<>(porUrgencia));
         publicarPartes(semana, resumo, linhas);
