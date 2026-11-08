@@ -33,7 +33,7 @@ Notas **0 a 3** são `CRITICA`; notas **4 a 10** são `NORMAL`. O caminho ASCII 
 
 - Conta AWS de estudante **158363271463**, projeto na região **us-east-2**. A região do Identity Center informada separadamente é us-east-1 e não muda a região do projeto.
 - AWS CLI **2.32.0 ou superior** para `aws login`, Terraform **1.10.0 ou superior**, Java **21**, Maven **3.9** e GitHub CLI autenticado como `wandrad3`.
-- Organização SonarQube Cloud vinculada ao GitHub e token de análise. É necessário importar o repositório público no Sonar antes do primeiro deploy.
+- Organização SonarQube Cloud `wandrad3profile-projects` vinculada ao GitHub e token de análise. É necessário importar o repositório público no Sonar antes do primeiro deploy, com a chave `wandrad3profile-projects_feedback-do-aluno`.
 - E-mail do administrador para alertas e relatórios. Após criar a inscrição SNS, o destinatário precisa clicar no link de confirmação.
 
 Confira o alvo antes de qualquer Terraform:
@@ -71,11 +71,11 @@ Configure o novo repositório no GitHub. Informe o token sem colocá-lo em hist�
 ```bash
 gh secret set SONAR_TOKEN -R wandrad3/feedback-do-aluno
 gh secret set EMAIL_ADMIN -R wandrad3/feedback-do-aluno
-gh variable set SONAR_ORGANIZATION -R wandrad3/feedback-do-aluno --body '<ORGANIZACAO>'
-gh variable set SONAR_PROJECT_KEY -R wandrad3/feedback-do-aluno --body '<CHAVE_PROJETO>'
+gh variable set SONAR_ORGANIZATION -R wandrad3/feedback-do-aluno --body 'wandrad3profile-projects'
+gh variable set SONAR_PROJECT_KEY -R wandrad3/feedback-do-aluno --body 'wandrad3profile-projects_feedback-do-aluno'
 ```
 
-`SONAR_TOKEN` e `EMAIL_ADMIN` são entradas interativas dos comandos `gh secret set`. O workflow em `.github/workflows/ci.yml` testa PRs e, após um merge em `main`, executa testes, cobertura, Sonar, validação Terraform e `terraform apply`. A autenticação GitHub → AWS usa OIDC; nenhuma chave de acesso AWS fica no GitHub ou no código. A saída do Terraform mostra URL da API, ID do cliente Cognito e ID do User Pool.
+As duas variables Sonar já estão cadastradas no GitHub. Crie o projeto na organização acima com a chave indicada, gere um token de análise na sua conta SonarQube Cloud e informe-o interativamente em `gh secret set SONAR_TOKEN`. `EMAIL_ADMIN` também é uma entrada interativa. O workflow em `.github/workflows/ci.yml` testa PRs e, após um merge em `main`, executa testes, cobertura, Sonar, validação Terraform e `terraform apply`. A autenticação GitHub → AWS usa OIDC; nenhuma chave de acesso AWS fica no GitHub ou no código. A saída do Terraform mostra URL da API, ID do cliente Cognito e ID do User Pool.
 
 Para testar localmente um `plan` com o perfil correto:
 
