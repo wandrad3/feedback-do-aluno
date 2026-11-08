@@ -1,0 +1,13 @@
+.terraform/
+*.tfstate*
+*.tfplan
+target/
+.idea/
+.vscode/
+*.log
+*.zip
+.env
+manual-professores-privado*
+terraform/**/backend.hcl
+terraform/**/terraform.tfvars
+ADJT - Fase 4 - Tech Challenge_rev.pdf

@@ -1,0 +1,124 @@
+name: Testes, Sonar e AWS
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      destroy:
+        description: "Destruir TODOS os recursos AWS do projeto após a avaliação"
+        type: boolean
+        required: true
+        default: false
+      confirmacao:
+        description: "Para destruir, digite DESTROY-158363271463"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feedback-aluno-aws
+  cancel-in-progress: false
+
+jobs:
+  qualidade:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.destroy != true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - name: Testes e cobertura obrigatória
+        run: mvn -B clean verify
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: '1.10.5' }
+      - name: Terraform fmt e validate
+        run: |
+          terraform -chdir=terraform/bootstrap fmt -check
+          terraform -chdir=terraform/app fmt -check -recursive
+          terraform -chdir=terraform/bootstrap init -backend=false
+          terraform -chdir=terraform/bootstrap validate
+          terraform -chdir=terraform/app init -backend=false
+          terraform -chdir=terraform/app validate
+      - name: Exigir configuração Sonar
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: |
+          test -n "$SONAR_TOKEN" && test -n "$SONAR_ORGANIZATION" && test -n "$SONAR_PROJECT_KEY" || { echo 'Sonar não configurado'; exit 1; }
+      - name: Análise SonarQube Cloud
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+            -Dsonar.organization="$SONAR_ORGANIZATION" \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.qualitygate.wait=true
+
+  deploy:
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.destroy != true && github.ref == 'refs/heads/main') }}
+    needs: qualidade
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn -B -DskipTests package
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: '1.10.5' }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::158363271463:role/feedback-aluno-github-deploy
+          aws-region: us-east-2
+      - name: Conferir conta de destino
+        run: test "$(aws sts get-caller-identity --query Account --output text)" = "158363271463"
+      - name: Aplicar infraestrutura e funções
+        env:
+          TF_VAR_email_admin: ${{ secrets.EMAIL_ADMIN }}
+        run: |
+          test -n "$TF_VAR_email_admin" || { echo 'EMAIL_ADMIN não configurado'; exit 1; }
+          terraform -chdir=terraform/app init -backend-config="bucket=feedback-aluno-tfstate-158363271463" -backend-config="region=us-east-2"
+          terraform -chdir=terraform/app apply -auto-approve
+          terraform -chdir=terraform/app output
+
+  destroy:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.destroy == true && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    steps:
+      - name: Conferir confirmação
+        env: { CONFIRMACAO: '${{ inputs.confirmacao }}' }
+        run: test "$CONFIRMACAO" = "DESTROY-158363271463"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn -B -DskipTests package
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: '1.10.5' }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::158363271463:role/feedback-aluno-github-deploy
+          aws-region: us-east-2
+      - name: Destruir aplicação
+        env:
+          TF_VAR_email_admin: ${{ secrets.EMAIL_ADMIN }}
+        run: |
+          test "$(aws sts get-caller-identity --query Account --output text)" = "158363271463"
+          test -n "$TF_VAR_email_admin"
+          terraform -chdir=terraform/app init -backend-config="bucket=feedback-aluno-tfstate-158363271463" -backend-config="region=us-east-2"
+          terraform -chdir=terraform/app destroy -auto-approve
+      - name: Remover bootstrap exclusivo do projeto
+        run: bash scripts/cleanup-bootstrap.sh
