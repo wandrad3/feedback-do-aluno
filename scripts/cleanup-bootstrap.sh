@@ -8,7 +8,7 @@ role="feedback-aluno-github-deploy"
 
 # O bucket tem versionamento: remover cada versão e marcador antes de apagar o bucket.
 while true; do
-  versions="$(aws s3api list-object-versions --bucket "$bucket" --output json | jq -c '[.Versions[]?, .DeleteMarkers[]?] | map({Key,VersionId})')"
+  versions="$(aws s3api list-object-versions --bucket "$bucket" --max-items 1000 --output json | jq -c '[.Versions[]?, .DeleteMarkers[]?] | map({Key,VersionId})')"
   test "$versions" != "[]" || break
   aws s3api delete-objects --bucket "$bucket" --delete "$(jq -cn --argjson objects "$versions" '{Objects:$objects,Quiet:true}')" >/dev/null
 done
