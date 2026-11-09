@@ -12,7 +12,9 @@ A aplicação está na conta AWS **315205584370**, região **us-east-2**. Para t
 
 ## 1. Obter um AccessToken
 
-**No Postman:** importe a collection, preencha as variáveis `usuario` e `senha` com as credenciais recebidas e execute **01 - Autenticar no Cognito**. A requisição usa `USER_PASSWORD_AUTH` e guarda `AuthenticationResult.AccessToken` na variável `access_token` da collection. Copie esse valor para usar no Swagger UI. Não exporte a collection depois de preenchê-la com credenciais ou token.
+**No Swagger UI:** abra [swagger-ui.html](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html), informe usuário e senha no quadro **Autenticação Cognito** e clique em **Entrar e autorizar**. A página envia a senha diretamente ao Cognito por HTTPS e usa o AccessToken retornado para autorizar o `POST /avaliacao`. Ela limpa o campo de senha após o login e não guarda o token após atualizar ou fechar a página.
+
+**No Postman:** importe a collection, preencha as variáveis `usuario` e `senha` com as credenciais recebidas e execute **01 - Autenticar no Cognito**. A requisição usa `USER_PASSWORD_AUTH` e guarda `AuthenticationResult.AccessToken` na variável `access_token` da collection. Não exporte a collection depois de preenchê-la com credenciais ou token.
 
 **No terminal:** faça a mesma autenticação no endpoint público `https://cognito-idp.us-east-2.amazonaws.com/`. Substitua `<USUARIO>` e `<SENHA>`; o ID do cliente já está preenchido:
 
@@ -27,8 +29,8 @@ Copie `AuthenticationResult.AccessToken` da resposta. O token expira em uma hora
 
 ## 2. Testar no Swagger UI
 
-1. Abra [swagger-ui.html](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html). A página deve mostrar **Feedback do Aluno API** e a operação `POST /avaliacao`. Se carregar apenas o título introdutório, use **Ctrl+F5** para renovar a página em cache.
-2. Clique em **Authorize**, cole apenas o AccessToken obtido no passo 1, **sem** escrever `Bearer`, e confirme em **Authorize**. A página acrescenta o cabeçalho `Authorization: Bearer <token>` à chamada.
+1. Abra [swagger-ui.html](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html). A página deve mostrar o quadro **Autenticação Cognito** e apenas a operação `POST /avaliacao`. Se carregar uma versão antiga, use **Ctrl+F5**.
+2. Entre no quadro de autenticação conforme o passo 1. A mensagem **Autenticado** indica que o token foi aplicado ao Swagger UI. Se já tiver um AccessToken, pode clicar em **Authorize** e colá-lo sem o prefixo `Bearer`.
 3. Expanda `POST /avaliacao`, clique em **Try it out**, informe um JSON fictício como `{"descricao":"A aula foi clara e objetiva","nota":9}` e clique em **Execute**.
 4. Confira a resposta `201` com `id`, `urgencia: "NORMAL"` e `enviadoEm`. Para testar a validação, envie uma nota `11`: a resposta esperada é `400`.
 

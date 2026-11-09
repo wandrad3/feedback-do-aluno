@@ -1,4 +1,7 @@
-locals { tags = { Projeto = var.nome, GerenciadoPor = "Terraform" } }
+locals {
+  tags        = { Projeto = var.nome, GerenciadoPor = "Terraform" }
+  swagger_csp = "default-src 'none'; script-src https://unpkg.com 'unsafe-inline'; style-src https://unpkg.com 'unsafe-inline'; connect-src 'self' https://cognito-idp.us-east-2.amazonaws.com; img-src 'self' data:; font-src 'self' data:; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+}
 
 resource "aws_dynamodb_table" "avaliacoes" {
   name         = "${var.nome}-avaliacoes"
@@ -207,17 +210,28 @@ resource "aws_apigatewayv2_route" "openapi" {
   target    = "integrations/${aws_apigatewayv2_integration.openapi.id}"
 }
 
+resource "terraform_data" "swagger_ui_headers" {
+  input = {
+    content_type = "text/html; charset=utf-8"
+    csp          = local.swagger_csp
+  }
+}
+
 resource "aws_apigatewayv2_integration" "swagger_ui" {
   api_id                 = aws_apigatewayv2_api.api.id
   integration_type       = "HTTP_PROXY"
   integration_method     = "GET"
   integration_uri        = "https://raw.githubusercontent.com/wandrad3/feedback-do-aluno/main/docs/swagger-ui.html"
   payload_format_version = "1.0"
+  lifecycle {
+    create_before_destroy = true
+    replace_triggered_by  = [terraform_data.swagger_ui_headers]
+  }
   response_parameters {
     status_code = 200
     mappings = {
       "overwrite:header.Content-Type"            = "text/html; charset=utf-8"
-      "overwrite:header.Content-Security-Policy" = "default-src 'none'; script-src https://unpkg.com 'unsafe-inline'; style-src https://unpkg.com 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self' data:; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+      "overwrite:header.Content-Security-Policy" = local.swagger_csp
     }
   }
 }
