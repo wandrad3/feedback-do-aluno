@@ -80,6 +80,18 @@ gh variable set SONAR_PROJECT_KEY -R wandrad3/feedback-do-aluno --body 'wandrad3
 
 As duas variables Sonar e os secrets `SONAR_TOKEN` e `EMAIL_ADMIN` já estão cadastrados no GitHub. O projeto público foi criado manualmente e ainda não está vinculado ao repositório. Conecte a organização Sonar ao GitHub e associe o projeto a `wandrad3/feedback-do-aluno` em **Administration → General Settings → Repository binding**. O workflow em `.github/workflows/ci.yml` testa PRs e, após um merge em `main`, executa testes, cobertura, Sonar, validação Terraform e `terraform apply`. A autenticação GitHub → AWS usa OIDC; nenhuma chave de acesso AWS fica no GitHub ou no código. A saída do Terraform mostra URL da API, ID do cliente Cognito e ID do User Pool.
 
+### Implantação atual
+
+O deploy na conta **315205584370**, região **us-east-2**, passou no [GitHub Actions](https://github.com/wandrad3/feedback-do-aluno/actions/runs/42668488101) em 9 de novembro de 2026. A API respondeu `401` sem token e `201` com um token de teste do Cognito; o usuário e a avaliação fictícia foram removidos após o teste.
+
+| Identificador público | Valor |
+| --- | --- |
+| URL da API | `https://vilam86911.execute-api.us-east-2.amazonaws.com` |
+| ID do cliente Cognito | `7l8o6012lm01h37ositatnsn36` |
+| ID do User Pool | `us-east-2_N2DycwX8K` |
+
+O administrador precisa confirmar o e-mail **AWS Notification - Subscription Confirmation** para ativar alertas críticos e relatórios semanais. Confira o estado com `aws sns list-subscriptions-by-topic` no tópico `arn:aws:sns:us-east-2:315205584370:feedback-aluno-notificacoes`.
+
 Para testar localmente um `plan` com o perfil correto:
 
 ```bash
@@ -92,7 +104,7 @@ No PowerShell, defina `$env:TF_VAR_email_admin` antes do comando `terraform plan
 
 ## Usuário de demonstração
 
-Após o deploy, crie um usuário somente para testes no User Pool indicado pelo output `cognito_user_pool_id`. Use `admin-create-user` com `--message-action SUPPRESS` e depois `admin-set-user-password --permanent` por um canal local seguro. Entregue usuário e senha aos professores **somente no manual privado, fora do Git**. O `cognito_client_id` e a URL da API são identificadores públicos e podem constar do guia. Evite senhas na linha de comando gravada pelo shell.
+O usuário `professor-demo` foi criado no User Pool e seu login foi validado. A senha forte está apenas no manual privado `D:\wstech\projetos\feedback-do-aluno-acesso-professores.md`, fora do Git e com acesso local restrito. Entregue esse arquivo aos professores por um canal privado. O `cognito_client_id` e a URL da API são identificadores públicos e podem constar do guia. Troque a senha ou exclua o usuário depois da avaliação.
 
 ## Monitoramento e custos
 
