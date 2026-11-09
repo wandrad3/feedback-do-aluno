@@ -90,7 +90,7 @@ O deploy na conta **315205584370**, região **us-east-2**, passou no [GitHub Act
 | ID do cliente Cognito | `7l8o6012lm01h37ositatnsn36` |
 | ID do User Pool | `us-east-2_N2DycwX8K` |
 
-O administrador precisa confirmar o e-mail **AWS Notification - Subscription Confirmation** para ativar alertas críticos e relatórios semanais. Confira o estado com `aws sns list-subscriptions-by-topic` no tópico `arn:aws:sns:us-east-2:315205584370:feedback-aluno-notificacoes`.
+O endereço administrativo correto está configurado no secret `EMAIL_ADMIN` e a assinatura SNS correspondente está **confirmada** (`PendingConfirmation=false`). Uma avaliação crítica fictícia retornou `201`, acionou a Lambda de notificação e gerou publicação e entrega no SNS sem falhas nas métricas; o registro de teste foi removido. Confira as assinaturas no tópico `arn:aws:sns:us-east-2:315205584370:feedback-aluno-notificacoes`. A inscrição pendente do endereço incorreto anterior não recebe notificações e [a AWS a remove automaticamente após 48 horas](https://docs.aws.amazon.com/sns/latest/dg/sns-delete-subscription-topic.html).
 
 Se o endereço do administrador mudar, atualize o secret `EMAIL_ADMIN` e acione o deploy com um push à `main`. O Terraform substituirá a assinatura SNS; o novo destinatário precisará confirmar o e-mail recebido. Não publique o endereço no repositório.
 
