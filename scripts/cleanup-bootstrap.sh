@@ -2,7 +2,7 @@
 set -euo pipefail
 
 account="$(aws sts get-caller-identity --query Account --output text)"
-test "$account" = "158363271463"
+test "$account" = "315205584370"
 bucket="feedback-aluno-tfstate-${account}"
 role="feedback-aluno-github-deploy"
 
