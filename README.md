@@ -11,32 +11,42 @@ flowchart LR
   API --> Receber[Lambda Java: receber]
   Receber --> DynamoDB
   DynamoDB -->|Streams| Notificar[Lambda Java: notificar]
-  Notificar --> SNS
+  Notificar --> SES[SES HTML]
   Scheduler[EventBridge Scheduler] --> Relatorio[Lambda Java: relatório]
   Relatorio --> DynamoDB
-  Relatorio --> SNS
-  SNS --> Email[Administrador por e-mail]
+  Relatorio --> SES
+  Professor -->|JWT, cadastro de e-mail| Cadastro[Lambda Java: cadastro]
+  Cadastro --> SES
+  Cadastro --> ProfessoresDB[DynamoDB: professores]
+  Professor -->|JWT, solicitar relatório| Solicitar[Lambda Java: solicitação]
+  Solicitar --> Relatorio
+  SES --> Email[Administrador e professores verificados]
+  Alarmes[CloudWatch] --> SNS
+  SNS --> Email
   GitHub[GitHub Actions] -->|OIDC + Terraform| AWS[AWS us-east-2]
 ```
 
-As três funções Lambda seguem responsabilidades distintas. O registro usa a semana ISO como chave de partição e um UUID como chave de ordenação no DynamoDB. O relatório consulta apenas a partição da semana anterior, calcula média, contagens por dia e urgência e inclui cada descrição, nota e data. Mensagens grandes são divididas em partes identificadas. O aviso crítico inclui descrição, urgência e data de envio.
+As cinco funções Lambda seguem responsabilidades distintas. O registro usa a semana ISO como chave de partição e um UUID como chave de ordenação no DynamoDB. O relatório consulta apenas a partição da semana anterior, calcula média, contagens por dia e urgência e inclui cada descrição, nota e data. Mensagens grandes são divididas em partes identificadas. O aviso crítico inclui descrição, urgência e data de envio. Alertas e relatórios usam e-mail HTML do **Instituto Aurora**, com versão em texto. Os alarmes de infraestrutura continuam no SNS.
 
 ## API
 
 | Método | Rota | Autenticação | Corpo |
 | --- | --- | --- | --- |
 | POST | `/avaliacao` | Access token JWT do Cognito | `{"descricao":"texto","nota":0..10}` |
+| POST | `/professores/email` | JWT de usuário no grupo `Professores` | `{"email":"professor@exemplo.com"}` |
+| DELETE | `/professores/email` | JWT de usuário no grupo `Professores` | Sem corpo; remove o próprio cadastro |
+| POST | `/relatorio/solicitar` | JWT de usuário no grupo `Professores` | Sem corpo; solicita o relatório da semana anterior |
 | GET | `/openapi.json` | Pública | Especificação OpenAPI 3.0 em JSON |
 | GET | `/swagger-ui.html` | Pública | Documentação interativa Swagger UI |
 
-Notas **0 a 3** são `CRITICA`; notas **4 a 10** são `NORMAL`. O caminho ASCII `/avaliacao` corresponde ao exemplo `/avaliação` do enunciado. Abra a [documentação interativa Swagger UI](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html), consulte o [OpenAPI publicado](https://vilam86911.execute-api.us-east-2.amazonaws.com/openapi.json) ou importe a [collection Postman](docs/feedback-do-aluno.postman_collection.json). O [manual público de uso](docs/USO-DA-API.md) ensina a obter um token e testar a API com `curl` ou PowerShell. O acesso administrativo aos relatórios é por e-mail SNS, confirmado pelo destinatário.
+Notas **0 a 3** são `CRITICA`; notas **4 a 10** são `NORMAL`. O caminho ASCII `/avaliacao` corresponde ao exemplo `/avaliação` do enunciado. Abra a [documentação interativa Swagger UI](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html), consulte o [OpenAPI publicado](https://vilam86911.execute-api.us-east-2.amazonaws.com/openapi.json) ou importe a [collection Postman](docs/feedback-do-aluno.postman_collection.json). O [manual público de uso](docs/USO-DA-API.md) ensina a obter um token e testar a API com `curl` ou PowerShell. Cada professor cadastra o próprio e-mail e confirma o link da AWS antes de receber mensagens.
 
 ## Pré-requisitos
 
 - Conta AWS de estudante **315205584370**, aplicação na região **us-east-2**. O login do projeto usa **us-east-1**; a região do login não altera a região da infraestrutura.
 - AWS CLI **2.32.0 ou superior** para `aws login`, Terraform **1.10.0 ou superior**, Java **21**, Maven **3.9** e GitHub CLI autenticado como `wandrad3`.
 - Projeto público no SonarQube Cloud `wandrad3profile-projects`, com chave `wandrad3profile-projects_wandrad3-feedback-do-aluno`, e token de análise cadastrado no GitHub. A organização ainda precisa ser vinculada ao GitHub para habilitar a integração com PRs.
-- E-mail do administrador para alertas e relatórios. Após criar a inscrição SNS, o destinatário precisa clicar no link de confirmação.
+- E-mail do administrador para alarmes SNS e como remetente SES dos alertas e relatórios. O destinatário precisa confirmar a inscrição SNS e a identidade SES; a AWS envia mensagens distintas para cada confirmação.
 
 Confira o alvo antes de qualquer Terraform:
 
@@ -56,7 +66,7 @@ O campo `Account` deve ser `315205584370` nos dois perfis. `feedback-aluno-terra
 mvn clean verify
 ```
 
-O Maven produz `target/feedback-do-aluno.jar`, um JAR com as dependências necessárias às três funções. O JaCoCo exige **100% de linhas e 100% de ramos cobertos no código Java de produção**. O Sonar importa `target/site/jacoco/jacoco.xml` e seu quality gate bloqueia o deploy. A pipeline falha se faltar qualquer parâmetro Sonar; não há exclusões de cobertura para código de produção.
+O Maven produz `target/feedback-do-aluno.jar`, um JAR com as dependências necessárias às cinco funções. O JaCoCo exige **100% de linhas e 100% de ramos cobertos no código Java de produção**. O Sonar importa `target/site/jacoco/jacoco.xml` e seu quality gate bloqueia o deploy. A pipeline falha se faltar qualquer parâmetro Sonar; não há exclusões de cobertura para código de produção.
 
 ## Bootstrap do Terraform e deploy
 
@@ -106,6 +116,12 @@ TF_VAR_email_admin='<EMAIL>' terraform plan
 
 No PowerShell, defina `$env:TF_VAR_email_admin` antes do comando `terraform plan`. O e-mail fica no estado remoto criptografado e não deve ser incluído em `terraform.tfvars` versionado.
 
+## Professores, SES e envio sob demanda
+
+O grupo Cognito `Professores` controla `POST /professores/email`, `DELETE /professores/email` e `POST /relatorio/solicitar`. Após o deploy, adicione o usuário de demonstração ao grupo com `aws cognito-idp admin-add-user-to-group --user-pool-id us-east-2_N2DycwX8K --username professor-demo --group-name Professores --region us-east-2 --profile feedback-aluno-terraform`. O usuário precisa entrar novamente para obter um token com o grupo atualizado.
+
+O Terraform solicita a verificação SES do endereço em `EMAIL_ADMIN`. O responsável pelo endereço deve confirmar o link de verificação antes de publicar a nova versão. A conta SES está em **sandbox**: cada professor cadastrado recebe outro link de verificação da AWS; somente endereços verificados recebem os alertas e relatórios HTML. O e-mail usa a marca fictícia **Instituto Aurora** e inclui versão em texto. O modelo escapa o conteúdo das avaliações antes de inseri-lo no HTML. O endpoint manual envia o relatório da **semana anterior**, igual ao agendamento automático.
+
 ## Usuário de demonstração
 
 O usuário `professor-demo` foi criado no User Pool e seu login foi validado. A senha forte está apenas no manual privado `D:\wstech\projetos\feedback-do-aluno-acesso-professores.md`, fora do Git e com acesso local restrito. Entregue esse arquivo aos professores por um canal privado. O `cognito_client_id` e a URL da API são identificadores públicos e podem constar do guia. Troque a senha ou exclua o usuário depois da avaliação.
@@ -113,10 +129,10 @@ O usuário `professor-demo` foi criado no User Pool e seu login foi validado. A 
 ## Monitoramento e custos
 
 - CloudWatch Logs retém sete dias de logs por função. O código não registra a descrição das avaliações.
-- Três alarmes CloudWatch monitoram erros das Lambdas e publicam no mesmo SNS dos alertas. Verifique também as métricas de execução, throttling e duração no console.
+- Cinco alarmes CloudWatch monitoram erros das Lambdas e publicam no SNS administrativo. Verifique também as métricas de execução, throttling e duração no console.
 - API Gateway limita chamadas a 5 por segundo, com burst 10; o DynamoDB usa 1 RCU e 1 WCU provisionados; as Lambdas usam 512 MB e não ficam em VPC. Isso reduz recursos fixos e evita NAT Gateway.
 - Confirme no console AWS Billing o plano e o consumo do Free Tier. Franquias são compartilhadas na conta e o custo zero não é garantido se o uso exceder os limites.
-- Notificações via DynamoDB Streams e SNS têm entrega ao menos uma vez; em caso de repetição por retry, um alerta pode chegar duplicado.
+- Notificações via DynamoDB Streams e SES têm entrega ao menos uma vez; em caso de repetição por retry, um alerta pode chegar duplicado. O SES em sandbox exige verificação individual dos destinatários.
 
 Essas decisões abordam segurança (JWT, IAM restrito, criptografia e ausência de chaves permanentes), confiabilidade (eventos desacoplados, retries e alarmes), excelência operacional (Terraform, CI/CD, logs), eficiência (consultas por semana e funções leves) e otimização de custos (serviços serverless, limites e retenção curta), conforme os pilares do AWS Well-Architected Framework.
 
@@ -130,7 +146,7 @@ Se o workflow parar antes da limpeza do bootstrap, não apague manualmente o est
 
 | Caminho | Conteúdo |
 | --- | --- |
-| `src/main/java` | Domínio e três handlers Lambda. |
+| `src/main/java` | Domínio, cinco handlers Lambda e template de e-mail. |
 | `src/test/java` | Testes unitários e de fluxo. |
 | `terraform/modules/plataforma` | Módulo reutilizável da aplicação. |
 | `terraform/app` | Instância da plataforma em us-east-2. |
@@ -142,11 +158,11 @@ Se o workflow parar antes da limpeza do bootstrap, não apague manualmente o est
 | Sintoma | Verificação |
 | --- | --- |
 | `401` no POST | Use `AccessToken`, não a senha nem um token expirado. |
-| Avaliação `201`, mas sem e-mail | Confirme a inscrição SNS e confira logs da Lambda `notificar`. |
+| Avaliação `201`, mas sem e-mail | Confirme a identidade SES do remetente e do destinatário; confira logs da Lambda `notificar`. |
 | Pipeline falha no Sonar | Confirme `SONAR_TOKEN`, organização, chave e projeto importado. |
 | `AccessDenied` no deploy | Confirme a conta `315205584370`, a função OIDC e a confiança para o ID imutável do repositório. |
 | `terraform init` falha | Confirme a existência do bucket de estado e a região `us-east-2`. |
 
 ## Limites conhecidos
 
-O projeto foi dimensionado para demonstração acadêmica, não para grande volume. O envio de e-mail exige a confirmação do SNS; relatórios grandes são divididos em várias mensagens. A API não inclui painel web nem consulta administrativa sob demanda.
+O projeto foi dimensionado para demonstração acadêmica, não para grande volume. O envio de e-mail exige confirmação SES, e o sandbox limita destinatários aos verificados. Relatórios grandes são divididos em várias mensagens. A API não inclui painel web nem consulta administrativa por período arbitrário.

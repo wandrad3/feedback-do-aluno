@@ -45,6 +45,28 @@
           "429": { "description": "Limite de requisições excedido" }
         }
       }
+    },
+    "/professores/email": {
+      "post": {
+        "summary": "Cadastrar o próprio e-mail para receber alertas e relatórios",
+        "description": "Exige usuário do grupo Professores. A AWS envia um link de verificação ao endereço informado; o envio começa após a confirmação.",
+        "security": [{ "cognitoJwt": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailProfessor" }, "example": { "email": "professor@exemplo.com" } } } },
+        "responses": { "202": { "description": "Cadastro recebido; confirmação do e-mail necessária" }, "400": { "description": "E-mail ou JSON inválido" }, "401": { "description": "Token ausente ou inválido" }, "403": { "description": "Usuário não pertence ao grupo Professores" } }
+      },
+      "delete": {
+        "summary": "Remover o próprio e-mail da lista de envios",
+        "security": [{ "cognitoJwt": [] }],
+        "responses": { "200": { "description": "Cadastro removido" }, "401": { "description": "Token ausente ou inválido" }, "403": { "description": "Usuário não pertence ao grupo Professores" } }
+      }
+    },
+    "/relatorio/solicitar": {
+      "post": {
+        "summary": "Solicitar envio do relatório da semana anterior",
+        "description": "Exige usuário do grupo Professores. O relatório é processado de forma assíncrona e enviado aos e-mails verificados.",
+        "security": [{ "cognitoJwt": [] }],
+        "responses": { "202": { "description": "Envio solicitado" }, "401": { "description": "Token ausente ou inválido" }, "403": { "description": "Usuário não pertence ao grupo Professores" } }
+      }
     }
   },
   "components": {
@@ -73,6 +95,11 @@
           "urgencia": { "type": "string", "enum": ["NORMAL", "CRITICA"] },
           "enviadoEm": { "type": "string", "format": "date-time" }
         }
+      },
+      "EmailProfessor": {
+        "type": "object",
+        "required": ["email"],
+        "properties": { "email": { "type": "string", "format": "email", "maxLength": 254 } }
       },
       "Erro": {
         "type": "object",

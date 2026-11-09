@@ -8,8 +8,6 @@ import com.amazonaws.services.lambda.runtime.events.models.dynamodb.StreamRecord
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.PublishRequest;
 
 class NotificarUrgenciaTest {
     private static DynamodbEvent.DynamodbStreamRecord registro(String tipo, String urgencia) {
@@ -24,12 +22,12 @@ class NotificarUrgenciaTest {
     }
 
     @Test void publicaApenasNovosCriticos() {
-        SnsClient sns = mock(SnsClient.class);
+        EmailCorporativo email = mock(EmailCorporativo.class);
         DynamodbEvent event = new DynamodbEvent();
         event.setRecords(List.of(registro("MODIFY", "CRITICA"), registro("INSERT", "NORMAL"), registro("INSERT", "CRITICA")));
-        assertEquals("1", new NotificarUrgencia(sns, "arn:topico").handleRequest(event, null));
-        var captor = org.mockito.ArgumentCaptor.forClass(PublishRequest.class);
-        verify(sns).publish(captor.capture());
-        assertTrue(captor.getValue().message().contains("aula ruim"));
+        assertEquals("1", new NotificarUrgencia(email).handleRequest(event, null));
+        var captor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(email).enviar(anyString(), anyString(), captor.capture());
+        assertTrue(captor.getValue().contains("aula ruim"));
     }
 }

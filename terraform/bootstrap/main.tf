@@ -65,7 +65,7 @@ resource "aws_iam_role_policy" "deploy" {
   name = "feedback-aluno-deploy"
   role = aws_iam_role.github.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Effect = "Allow", Action = ["apigateway:*", "cognito-idp:*", "dynamodb:*", "lambda:*", "sns:*", "scheduler:*", "cloudwatch:*", "logs:*"], Resource = "*" },
+    { Effect = "Allow", Action = ["apigateway:*", "cognito-idp:*", "dynamodb:*", "lambda:*", "sns:*", "ses:*", "scheduler:*", "cloudwatch:*", "logs:*"], Resource = "*" },
     { Effect = "Allow", Action = ["iam:CreateRole", "iam:GetRole", "iam:DeleteRole", "iam:UpdateAssumeRolePolicy", "iam:TagRole", "iam:UntagRole", "iam:PassRole", "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies"], Resource = "arn:aws:iam::${data.aws_caller_identity.atual.account_id}:role/feedback-aluno-*" },
     { Effect = "Allow", Action = ["iam:DeleteOpenIDConnectProvider"], Resource = aws_iam_openid_connect_provider.github.arn },
     { Effect = "Allow", Action = ["s3:ListBucket", "s3:ListBucketVersions", "s3:GetBucketLocation", "s3:DeleteBucket"], Resource = aws_s3_bucket.state.arn },

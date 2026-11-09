@@ -22,7 +22,7 @@
 <body>
   <div class="intro">
     <h1>Feedback do Aluno</h1>
-    <p>Entre com seu usuário Cognito para autorizar <code>POST /avaliacao</code>. A senha é enviada diretamente ao Cognito e não é guardada nesta página. Use apenas avaliações fictícias; notas de 0 a 3 enviam um alerta ao administrador.</p>
+    <p>Entre com seu usuário Cognito para autorizar as operações. Professores podem cadastrar o próprio e-mail e solicitar o relatório da semana anterior. A senha é enviada diretamente ao Cognito e não é guardada nesta página. Use apenas avaliações fictícias; notas de 0 a 3 enviam um alerta aos destinatários verificados.</p>
     <div class="login">
       <h2>Autenticação Cognito</h2>
       <label for="username">Usuário <input id="username" name="username" autocomplete="username"></label>
@@ -75,7 +75,7 @@
           }
           ui.preauthorizeApiKey('cognitoJwt', result.AuthenticationResult.AccessToken);
           password.value = '';
-          status.textContent = 'Autenticado. Abra POST /avaliacao para testar.';
+          status.textContent = 'Autenticado. Escolha uma operação abaixo.';
         } catch (error) {
           status.textContent = 'Não foi possível autenticar. Confira usuário e senha.';
         } finally {
