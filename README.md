@@ -94,7 +94,7 @@ As duas variables Sonar e os secrets `SONAR_TOKEN` e `EMAIL_ADMIN` já estão ca
 
 ### Implantação atual
 
-O deploy na conta **315205584370**, região **us-east-2**, passou no [GitHub Actions](https://github.com/wandrad3/feedback-do-aluno/actions/runs/42668488101) em 9 de novembro de 2026. A API respondeu `401` sem token e `201` com um token de teste do Cognito; o usuário e a avaliação fictícia foram removidos após o teste.
+O deploy da versão com cadastro de professores e e-mails HTML na conta **315205584370**, região **us-east-2**, passou no [GitHub Actions](https://github.com/wandrad3/feedback-do-aluno/actions/runs/42694590095) em 9 de novembro de 2026. As novas rotas responderam `401` sem token. Com um usuário temporário no grupo `Professores`, o cadastro respondeu `202`, a solicitação do relatório `202`, a avaliação crítica `201` e a remoção do cadastro `200`. A avaliação e o usuário fictícios foram removidos após o teste.
 
 | Identificador público | Valor |
 | --- | --- |
@@ -102,9 +102,9 @@ O deploy na conta **315205584370**, região **us-east-2**, passou no [GitHub Act
 | ID do cliente Cognito | `7l8o6012lm01h37ositatnsn36` |
 | ID do User Pool | `us-east-2_N2DycwX8K` |
 
-O endereço administrativo correto está configurado no secret `EMAIL_ADMIN` e a assinatura SNS correspondente está **confirmada** (`PendingConfirmation=false`). Uma avaliação crítica fictícia retornou `201`, acionou a Lambda de notificação e gerou publicação e entrega no SNS sem falhas nas métricas; o registro de teste foi removido. Confira as assinaturas no tópico `arn:aws:sns:us-east-2:315205584370:feedback-aluno-notificacoes`. A inscrição pendente do endereço incorreto anterior não recebe notificações e [a AWS a remove automaticamente após 48 horas](https://docs.aws.amazon.com/sns/latest/dg/sns-delete-subscription-topic.html).
+O endereço administrativo correto está configurado no secret `EMAIL_ADMIN`; sua identidade SES está **verificada** e a assinatura SNS para alarmes técnicos está **confirmada**. A avaliação crítica fictícia acionou a Lambda de notificação, e a solicitação manual executou a Lambda de relatório. Os logs recentes dessas funções não registraram erros, e a cota SES registrou envios. O recebimento na caixa de entrada ainda deve ser confirmado pelo destinatário. O SNS não é mais usado para alertas de avaliações nem relatórios.
 
-Se o endereço do administrador mudar, atualize o secret `EMAIL_ADMIN` e acione o deploy com um push à `main`. O Terraform substituirá a assinatura SNS; o novo destinatário precisará confirmar o e-mail recebido. Não publique o endereço no repositório.
+Se o endereço do administrador mudar, atualize o secret `EMAIL_ADMIN` e acione o deploy com um push à `main`. O Terraform substituirá a assinatura SNS e a identidade SES; o novo destinatário precisará confirmar as duas mensagens de verificação. Não publique o endereço no repositório.
 
 Para testar localmente um `plan` com o perfil correto:
 
@@ -118,9 +118,9 @@ No PowerShell, defina `$env:TF_VAR_email_admin` antes do comando `terraform plan
 
 ## Professores, SES e envio sob demanda
 
-O grupo Cognito `Professores` controla `POST /professores/email`, `DELETE /professores/email` e `POST /relatorio/solicitar`. Após o deploy, adicione o usuário de demonstração ao grupo com `aws cognito-idp admin-add-user-to-group --user-pool-id us-east-2_N2DycwX8K --username professor-demo --group-name Professores --region us-east-2 --profile feedback-aluno-terraform`. O usuário precisa entrar novamente para obter um token com o grupo atualizado.
+O grupo Cognito `Professores` controla `POST /professores/email`, `DELETE /professores/email` e `POST /relatorio/solicitar`. O usuário `professor-demo` já foi incluído no grupo. Ele precisa entrar novamente para obter um token com o grupo atualizado.
 
-O Terraform solicita a verificação SES do endereço em `EMAIL_ADMIN`. O responsável pelo endereço deve confirmar o link de verificação antes de publicar a nova versão. A conta SES está em **sandbox**: cada professor cadastrado recebe outro link de verificação da AWS; somente endereços verificados recebem os alertas e relatórios HTML. O e-mail usa a marca fictícia **Instituto Aurora** e inclui versão em texto. O modelo escapa o conteúdo das avaliações antes de inseri-lo no HTML. O endpoint manual envia o relatório da **semana anterior**, igual ao agendamento automático.
+O remetente SES em `EMAIL_ADMIN` está verificado. A conta SES está em **sandbox**: cada professor cadastrado recebe um link de verificação da AWS; somente endereços verificados recebem os alertas e relatórios HTML. O e-mail usa a marca fictícia **Instituto Aurora** e inclui versão em texto. O modelo escapa o conteúdo das avaliações antes de inseri-lo no HTML. O endpoint manual envia o relatório da **semana anterior**, igual ao agendamento automático.
 
 ## Usuário de demonstração
 
