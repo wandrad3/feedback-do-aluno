@@ -27,8 +27,9 @@ As três funções Lambda seguem responsabilidades distintas. O registro usa a s
 | --- | --- | --- | --- |
 | POST | `/avaliacao` | Access token JWT do Cognito | `{"descricao":"texto","nota":0..10}` |
 | GET | `/openapi.json` | Pública | Especificação OpenAPI 3.0 em JSON |
+| GET | `/swagger-ui.html` | Pública | Documentação interativa Swagger UI |
 
-Notas **0 a 3** são `CRITICA`; notas **4 a 10** são `NORMAL`. O caminho ASCII `/avaliacao` corresponde ao exemplo `/avaliação` do enunciado. Consulte o [OpenAPI publicado](https://vilam86911.execute-api.us-east-2.amazonaws.com/openapi.json) ou importe a [collection Postman](docs/feedback-do-aluno.postman_collection.json). O [manual público de uso](docs/USO-DA-API.md) ensina a obter um token e testar a API com `curl` ou PowerShell. O acesso administrativo aos relatórios é por e-mail SNS, confirmado pelo destinatário.
+Notas **0 a 3** são `CRITICA`; notas **4 a 10** são `NORMAL`. O caminho ASCII `/avaliacao` corresponde ao exemplo `/avaliação` do enunciado. Abra a [documentação interativa Swagger UI](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html), consulte o [OpenAPI publicado](https://vilam86911.execute-api.us-east-2.amazonaws.com/openapi.json) ou importe a [collection Postman](docs/feedback-do-aluno.postman_collection.json). O [manual público de uso](docs/USO-DA-API.md) ensina a obter um token e testar a API com `curl` ou PowerShell. O acesso administrativo aos relatórios é por e-mail SNS, confirmado pelo destinatário.
 
 ## Pré-requisitos
 

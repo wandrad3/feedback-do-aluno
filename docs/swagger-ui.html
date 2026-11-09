@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feedback do Aluno — Swagger UI</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.34.1/swagger-ui.css">
+  <style>
+    body { margin: 0; background: #fafafa; }
+    .intro { max-width: 1100px; margin: 24px auto 0; padding: 0 24px; font: 16px/1.5 Arial, sans-serif; color: #263238; }
+    .intro h1 { margin-bottom: 8px; font-size: 26px; }
+    .intro p { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1>Feedback do Aluno</h1>
+    <p>Para testar <code>POST /avaliacao</code>, obtenha um AccessToken do Cognito com a collection Postman e clique em <strong>Authorize</strong> abaixo. Use apenas avaliações fictícias; notas de 0 a 3 enviam um alerta ao administrador.</p>
+  </div>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.34.1/swagger-ui-bundle.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.34.1/swagger-ui-standalone-preset.js" crossorigin="anonymous"></script>
+  <script>
+    window.addEventListener('load', function () {
+      SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: 'StandaloneLayout',
+        validatorUrl: null
+      });
+    });
+  </script>
+</body>
+</html>

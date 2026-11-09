@@ -9,6 +9,19 @@
     { "url": "https://vilam86911.execute-api.us-east-2.amazonaws.com" }
   ],
   "paths": {
+    "/swagger-ui.html": {
+      "get": {
+        "summary": "Abrir a documentação interativa Swagger UI",
+        "operationId": "consultarSwaggerUi",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Página HTML da documentação interativa",
+            "content": { "text/html": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
     "/openapi.json": {
       "get": {
         "summary": "Consultar a especificação OpenAPI",

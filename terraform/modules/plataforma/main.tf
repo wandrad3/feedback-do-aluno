@@ -207,6 +207,26 @@ resource "aws_apigatewayv2_route" "openapi" {
   target    = "integrations/${aws_apigatewayv2_integration.openapi.id}"
 }
 
+resource "aws_apigatewayv2_integration" "swagger_ui" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "HTTP_PROXY"
+  integration_method     = "GET"
+  integration_uri        = "https://raw.githubusercontent.com/wandrad3/feedback-do-aluno/main/docs/swagger-ui.html"
+  payload_format_version = "1.0"
+  response_parameters {
+    status_code = 200
+    mappings = {
+      "overwrite:header.Content-Type" = "text/html; charset=utf-8"
+    }
+  }
+}
+
+resource "aws_apigatewayv2_route" "swagger_ui" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /swagger-ui.html"
+  target    = "integrations/${aws_apigatewayv2_integration.swagger_ui.id}"
+}
+
 resource "aws_apigatewayv2_route" "avaliacao" {
   api_id             = aws_apigatewayv2_api.api.id
   route_key          = "POST /avaliacao"
