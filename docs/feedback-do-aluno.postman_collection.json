@@ -1,0 +1,109 @@
+{
+  "info": {
+    "name": "Feedback do Aluno",
+    "description": "Testes da API implantada na conta AWS 315205584370. Informe usuario e senha do Cognito nas variáveis locais da collection. A senha não é versionada.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://vilam86911.execute-api.us-east-2.amazonaws.com" },
+    { "key": "cognito_url", "value": "https://cognito-idp.us-east-2.amazonaws.com/" },
+    { "key": "client_id", "value": "7l8o6012lm01h37ositatnsn36" },
+    { "key": "usuario", "value": "" },
+    { "key": "senha", "value": "" },
+    { "key": "access_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Autenticar no Cognito",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('Autenticação HTTP 200', function () { pm.response.to.have.status(200); });",
+            "if (pm.response.code === 200) {",
+            "  const result = pm.response.json();",
+            "  pm.test('AccessToken presente', function () { pm.expect(result.AuthenticationResult.AccessToken).to.be.a('string').and.not.empty; });",
+            "  pm.collectionVariables.set('access_token', result.AuthenticationResult.AccessToken);",
+            "}"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-amz-json-1.1" },
+          { "key": "X-Amz-Target", "value": "AWSCognitoIdentityProviderService.InitiateAuth" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"AuthFlow\":\"USER_PASSWORD_AUTH\",\"ClientId\":\"{{client_id}}\",\"AuthParameters\":{\"USERNAME\":\"{{usuario}}\",\"PASSWORD\":\"{{senha}}\"}}"
+        },
+        "url": "{{cognito_url}}"
+      }
+    },
+    {
+      "name": "02 - Consultar OpenAPI",
+      "request": { "method": "GET", "url": "{{base_url}}/openapi.json" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('OpenAPI HTTP 200', function () { pm.response.to.have.status(200); });",
+        "pm.test('Contrato OpenAPI 3', function () { pm.expect(pm.response.json().openapi).to.match(/^3\\./); });"
+      ] } }]
+    },
+    {
+      "name": "03 - Avaliação normal",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"descricao\":\"Aula de teste clara e objetiva\",\"nota\":9}" },
+        "url": "{{base_url}}/avaliacao"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Criada HTTP 201', function () { pm.response.to.have.status(201); });",
+        "pm.test('Urgência normal e ID presentes', function () { const body = pm.response.json(); pm.expect(body.urgencia).to.eql('NORMAL'); pm.expect(body.id).to.be.a('string').and.not.empty; });"
+      ] } }]
+    },
+    {
+      "name": "04 - Avaliação crítica (envia alerta ao administrador)",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"descricao\":\"Aula fictícia para validar alerta\",\"nota\":2}" },
+        "url": "{{base_url}}/avaliacao"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Criada HTTP 201', function () { pm.response.to.have.status(201); });",
+        "pm.test('Urgência crítica', function () { pm.expect(pm.response.json().urgencia).to.eql('CRITICA'); });"
+      ] } }]
+    },
+    {
+      "name": "05 - Nota inválida",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"descricao\":\"Teste de validação\",\"nota\":11}" },
+        "url": "{{base_url}}/avaliacao"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Rejeitada HTTP 400', function () { pm.response.to.have.status(400); });",
+        "pm.test('Mensagem de erro presente', function () { pm.expect(pm.response.json().erro).to.be.a('string'); });"
+      ] } }]
+    },
+    {
+      "name": "06 - Sem token",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "noauth" },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"descricao\":\"Teste sem autenticação\",\"nota\":9}" },
+        "url": "{{base_url}}/avaliacao"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Acesso negado HTTP 401', function () { pm.response.to.have.status(401); });"
+      ] } }]
+    }
+  ]
+}

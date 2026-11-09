@@ -2,6 +2,8 @@
 
 Este guia permite testar a API sem chaves IAM da AWS. Peça ao responsável pelo projeto a URL da API, o ID do cliente Cognito e um usuário de teste. **Não publique a senha nem o token recebido.**
 
+O contrato [OpenAPI 3.0](openapi.json) está publicado também em `https://vilam86911.execute-api.us-east-2.amazonaws.com/openapi.json`. Importe a [collection Postman](feedback-do-aluno.postman_collection.json), preencha as variáveis locais `usuario` e `senha` e execute primeiro **01 - Autenticar no Cognito**. O teste armazena o access token na variável da collection; não exporte a collection com credenciais preenchidas. A requisição **04 - Avaliação crítica** envia um alerta real ao administrador.
+
 ## 1. Autenticar
 
 O cliente Cognito está configurado para `USER_PASSWORD_AUTH`. O endpoint público de autenticação é `https://cognito-idp.us-east-2.amazonaws.com/`. Substitua os valores entre `<...>`:

@@ -187,6 +187,26 @@ resource "aws_apigatewayv2_integration" "receber" {
   payload_format_version = "2.0"
 }
 
+resource "aws_apigatewayv2_integration" "openapi" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "HTTP_PROXY"
+  integration_method     = "GET"
+  integration_uri        = "https://raw.githubusercontent.com/wandrad3/feedback-do-aluno/main/docs/openapi.json"
+  payload_format_version = "1.0"
+  response_parameters {
+    status_code = 200
+    mappings = {
+      "overwrite:header.Content-Type" = "application/json"
+    }
+  }
+}
+
+resource "aws_apigatewayv2_route" "openapi" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /openapi.json"
+  target    = "integrations/${aws_apigatewayv2_integration.openapi.id}"
+}
+
 resource "aws_apigatewayv2_route" "avaliacao" {
   api_id             = aws_apigatewayv2_api.api.id
   route_key          = "POST /avaliacao"

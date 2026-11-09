@@ -1,0 +1,97 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Feedback do Aluno API",
+    "version": "1.0.0",
+    "description": "Recebe avaliações de aulas. Para obter um access token, use o pedido Autenticar da collection Postman com um usuário Cognito fornecido pelo responsável pelo projeto."
+  },
+  "servers": [
+    { "url": "https://vilam86911.execute-api.us-east-2.amazonaws.com" }
+  ],
+  "paths": {
+    "/openapi.json": {
+      "get": {
+        "summary": "Consultar a especificação OpenAPI",
+        "operationId": "consultarOpenApi",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Especificação OpenAPI em JSON",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    },
+    "/avaliacao": {
+      "post": {
+        "summary": "Enviar avaliação de uma aula",
+        "operationId": "criarAvaliacao",
+        "description": "Notas de 0 a 3 são críticas e acionam uma notificação por e-mail ao administrador. Use apenas dados fictícios na descrição.",
+        "security": [{ "cognitoJwt": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NovaAvaliacao" },
+              "examples": {
+                "normal": { "value": { "descricao": "A aula foi clara e objetiva", "nota": 9 } },
+                "critica": { "value": { "descricao": "Não consegui acompanhar a explicação", "nota": 2 } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Avaliação registrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AvaliacaoCriada" },
+                "example": { "id": "23f0416a-3bb5-4e0c-ab7d-18346b5b1060", "urgencia": "NORMAL", "enviadoEm": "2026-11-09T12:00:00Z" }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON inválido ou descrição/nota fora dos limites",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Erro" } } }
+          },
+          "401": { "description": "Access token JWT ausente, inválido ou expirado" },
+          "429": { "description": "Limite de requisições excedido" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cognitoJwt": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "AccessToken do Cognito User Pool us-east-2_N2DycwX8K, obtido com USER_PASSWORD_AUTH no cliente 7l8o6012lm01h37ositatnsn36."
+      }
+    },
+    "schemas": {
+      "NovaAvaliacao": {
+        "type": "object",
+        "required": ["descricao", "nota"],
+        "properties": {
+          "descricao": { "type": "string", "minLength": 1, "maxLength": 1000, "description": "Texto não vazio após remover espaços das extremidades." },
+          "nota": { "type": "integer", "minimum": 0, "maximum": 10 }
+        }
+      },
+      "AvaliacaoCriada": {
+        "type": "object",
+        "required": ["id", "urgencia", "enviadoEm"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "urgencia": { "type": "string", "enum": ["NORMAL", "CRITICA"] },
+          "enviadoEm": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Erro": {
+        "type": "object",
+        "required": ["erro"],
+        "properties": { "erro": { "type": "string" } }
+      }
+    }
+  }
+}
