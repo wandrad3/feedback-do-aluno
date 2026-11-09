@@ -1,26 +1,47 @@
-# Manual público de uso da API
+# Manual de uso e testes da API
 
-Este guia permite testar a API sem chaves IAM da AWS. Peça ao responsável pelo projeto a URL da API, o ID do cliente Cognito e um usuário de teste. **Não publique a senha nem o token recebido.**
+A aplicação está na conta AWS **315205584370**, região **us-east-2**. Para testar, use um usuário Cognito fornecido pelo responsável pelo projeto. Não são necessárias chaves IAM. **Não publique a senha nem o token recebido.**
 
-Abra a [documentação interativa Swagger UI](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html) ou consulte o contrato [OpenAPI 3.0](openapi.json), publicado também em `https://vilam86911.execute-api.us-east-2.amazonaws.com/openapi.json`. Importe a [collection Postman](feedback-do-aluno.postman_collection.json), preencha as variáveis locais `usuario` e `senha` e execute primeiro **01 - Autenticar no Cognito**. O teste armazena o access token na variável da collection; não exporte a collection com credenciais preenchidas. Na Swagger UI, clique em **Authorize** e informe o AccessToken obtido no Postman. A requisição **04 - Avaliação crítica** envia um alerta real ao administrador.
+| Recurso | Endereço ou valor |
+| --- | --- |
+| Swagger UI | [Abrir documentação interativa](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html) |
+| OpenAPI 3.0 | [Abrir contrato JSON](https://vilam86911.execute-api.us-east-2.amazonaws.com/openapi.json) |
+| API | `https://vilam86911.execute-api.us-east-2.amazonaws.com` |
+| Cliente Cognito | `7l8o6012lm01h37ositatnsn36` |
+| Collection Postman | [Baixar arquivo](feedback-do-aluno.postman_collection.json) |
 
-## 1. Autenticar
+## 1. Obter um AccessToken
 
-O cliente Cognito está configurado para `USER_PASSWORD_AUTH`. O endpoint público de autenticação é `https://cognito-idp.us-east-2.amazonaws.com/`. Substitua os valores entre `<...>`:
+**No Postman:** importe a collection, preencha as variáveis `usuario` e `senha` com as credenciais recebidas e execute **01 - Autenticar no Cognito**. A requisição usa `USER_PASSWORD_AUTH` e guarda `AuthenticationResult.AccessToken` na variável `access_token` da collection. Copie esse valor para usar no Swagger UI. Não exporte a collection depois de preenchê-la com credenciais ou token.
+
+**No terminal:** faça a mesma autenticação no endpoint público `https://cognito-idp.us-east-2.amazonaws.com/`. Substitua `<USUARIO>` e `<SENHA>`; o ID do cliente já está preenchido:
 
 ```bash
 curl -sS https://cognito-idp.us-east-2.amazonaws.com/ \
   -H 'Content-Type: application/x-amz-json-1.1' \
   -H 'X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth' \
-  -d '{"AuthFlow":"USER_PASSWORD_AUTH","ClientId":"<CLIENT_ID>","AuthParameters":{"USERNAME":"<USUARIO>","PASSWORD":"<SENHA>"}}'
+  -d '{"AuthFlow":"USER_PASSWORD_AUTH","ClientId":"7l8o6012lm01h37ositatnsn36","AuthParameters":{"USERNAME":"<USUARIO>","PASSWORD":"<SENHA>"}}'
 ```
 
-Copie o campo `AuthenticationResult.AccessToken` da resposta para a variável `TOKEN`. O token expira em uma hora. Se receber `NotAuthorizedException`, confira usuário, senha e ID do cliente. Se receber `NEW_PASSWORD_REQUIRED`, peça ao responsável para definir uma senha permanente para o usuário de teste.
+Copie `AuthenticationResult.AccessToken` da resposta. O token expira em uma hora. Se receber `NotAuthorizedException`, confira usuário e senha. Se receber `NEW_PASSWORD_REQUIRED`, peça ao responsável para definir uma senha permanente para o usuário de teste.
 
-## 2. Enviar uma avaliação
+## 2. Testar no Swagger UI
+
+1. Abra [swagger-ui.html](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html). A página deve mostrar **Feedback do Aluno API** e a operação `POST /avaliacao`. Se carregar apenas o título introdutório, use **Ctrl+F5** para renovar a página em cache.
+2. Clique em **Authorize**, cole apenas o AccessToken obtido no passo 1, **sem** escrever `Bearer`, e confirme em **Authorize**. A página acrescenta o cabeçalho `Authorization: Bearer <token>` à chamada.
+3. Expanda `POST /avaliacao`, clique em **Try it out**, informe um JSON fictício como `{"descricao":"A aula foi clara e objetiva","nota":9}` e clique em **Execute**.
+4. Confira a resposta `201` com `id`, `urgencia: "NORMAL"` e `enviadoEm`. Para testar a validação, envie uma nota `11`: a resposta esperada é `400`.
+
+Uma nota de **0 a 3** retorna `urgencia: "CRITICA"` e envia um alerta real ao administrador. Use esse caso somente quando quiser validar o alerta.
+
+## 3. Testar no Postman
+
+Após **01 - Autenticar no Cognito**, execute **03 - Avaliação normal**, **05 - Nota inválida** e **06 - Sem token**. A requisição **04 - Avaliação crítica** envia um alerta real. A requisição **02 - Consultar OpenAPI** verifica o contrato publicado. Os testes da collection verificam os códigos HTTP e os campos principais das respostas.
+
+## 4. Testar com curl
 
 ```bash
-curl -i -X POST '<API_URL>/avaliacao' \
+curl -i -X POST 'https://vilam86911.execute-api.us-east-2.amazonaws.com/avaliacao' \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H 'Content-Type: application/json' \
   -d '{"descricao":"A aula foi clara e objetiva","nota":9}'
@@ -35,7 +56,7 @@ Resposta `201`:
 Para testar o alerta, envie uma nota de 0 a 3:
 
 ```bash
-curl -i -X POST '<API_URL>/avaliacao' \
+curl -i -X POST 'https://vilam86911.execute-api.us-east-2.amazonaws.com/avaliacao' \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H 'Content-Type: application/json' \
   -d '{"descricao":"Não consegui acompanhar a explicação","nota":2}'
@@ -57,12 +78,13 @@ Use somente dados fictícios na descrição. Não envie nomes, e-mails ou outros
 ## Exemplo em PowerShell
 
 ```powershell
-$clientId = '<CLIENT_ID>'
+$clientId = '7l8o6012lm01h37ositatnsn36'
 $usuario = '<USUARIO>'
-$senha = Read-Host 'Senha do usuário de teste'
+$senhaSegura = Read-Host 'Senha do usuário de teste' -AsSecureString
+$senha = [System.Net.NetworkCredential]::new('', $senhaSegura).Password
 $authBody = @{ AuthFlow='USER_PASSWORD_AUTH'; ClientId=$clientId; AuthParameters=@{ USERNAME=$usuario; PASSWORD=$senha } } | ConvertTo-Json -Depth 4
 $auth = Invoke-RestMethod 'https://cognito-idp.us-east-2.amazonaws.com/' -Method Post -ContentType 'application/x-amz-json-1.1' -Headers @{ 'X-Amz-Target'='AWSCognitoIdentityProviderService.InitiateAuth' } -Body $authBody
 $token = $auth.AuthenticationResult.AccessToken
 $body = @{ descricao='A aula foi clara'; nota=9 } | ConvertTo-Json
-Invoke-RestMethod '<API_URL>/avaliacao' -Method Post -ContentType 'application/json' -Headers @{ Authorization="Bearer $token" } -Body $body
+Invoke-RestMethod 'https://vilam86911.execute-api.us-east-2.amazonaws.com/avaliacao' -Method Post -ContentType 'application/json' -Headers @{ Authorization="Bearer $token" } -Body $body
 ```
