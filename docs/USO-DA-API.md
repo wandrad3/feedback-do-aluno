@@ -36,9 +36,19 @@ Copie `AuthenticationResult.AccessToken` da resposta. O token expira em uma hora
 
 Uma nota de **0 a 3** retorna `urgencia: "CRITICA"` e envia um alerta real ao administrador. Use esse caso somente quando quiser validar o alerta.
 
+### Cadastro do professor e relatório sob demanda
+
+As operações abaixo exigem um usuário Cognito no grupo **Professores**. Depois de entrar no Swagger UI:
+
+1. Abra `POST /professores/email`, clique em **Try it out** e informe o seu endereço em `{"email":"professor@exemplo.com"}`. A resposta `202` indica que a AWS enviou um link de verificação. Confirme esse link na sua caixa de entrada. O endereço anterior do mesmo usuário deixa de receber mensagens quando outro é cadastrado.
+2. Para receber imediatamente o relatório da **semana anterior**, execute `POST /relatorio/solicitar`. A resposta `202` indica que o processamento começou; o relatório chegará por e-mail após a geração. Essa operação não altera o agendamento automático de segunda-feira às 9h.
+3. Para parar de receber alertas e relatórios, execute `DELETE /professores/email`. A resposta esperada é `200`.
+
+Os alertas e relatórios são enviados em HTML com a marca fictícia **Instituto Aurora** e também têm versão em texto. A conta SES ainda está no modo sandbox: remetente e destinatários precisam estar verificados na região `us-east-2`. O administrador do projeto precisa confirmar primeiro a identidade de remetente; se a confirmação estiver pendente, os novos envios HTML ainda não funcionarão. Os alarmes técnicos continuam chegando pelo SNS.
+
 ## 3. Testar no Postman
 
-Após **01 - Autenticar no Cognito**, execute **03 - Avaliação normal**, **05 - Nota inválida** e **06 - Sem token**. A requisição **04 - Avaliação crítica** envia um alerta real. A requisição **02 - Consultar OpenAPI** verifica o contrato publicado. Os testes da collection verificam os códigos HTTP e os campos principais das respostas.
+Após **01 - Autenticar no Cognito**, execute **03 - Avaliação normal**, **05 - Nota inválida** e **06 - Sem token**. A requisição **04 - Avaliação crítica** envia um alerta real. A requisição **02 - Consultar OpenAPI** verifica o contrato publicado. Professores podem usar **07 - Cadastrar e-mail**, **08 - Solicitar relatório** e **09 - Remover e-mail**. Os testes da collection verificam os códigos HTTP e os campos principais das respostas.
 
 ## 4. Testar com curl
 
@@ -73,6 +83,7 @@ A resposta será `201` com `urgencia` igual a `CRITICA`. O SNS envia o aviso ao 
 | Avaliação criada | 201 | Guarde o ID retornado. |
 | JSON inválido, descrição vazia ou maior que 1000 caracteres, nota fora de 0 a 10 ou não inteira | 400 | Corrija o corpo JSON. |
 | Token ausente, inválido ou expirado | 401 | Autentique novamente e use o novo access token. |
+| Usuário sem grupo `Professores` nas operações administrativas | 403 | Peça ao responsável pelo projeto que atribua o grupo. |
 | Muitas chamadas em pouco tempo | 429 | Aguarde e tente novamente. |
 
 Use somente dados fictícios na descrição. Não envie nomes, e-mails ou outros dados pessoais.

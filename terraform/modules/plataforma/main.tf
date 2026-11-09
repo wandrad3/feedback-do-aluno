@@ -25,6 +25,22 @@ resource "aws_dynamodb_table" "avaliacoes" {
   tags = local.tags
 }
 
+resource "aws_dynamodb_table" "professores" {
+  name         = "${var.nome}-professores"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "professorId"
+  attribute {
+    name = "professorId"
+    type = "S"
+  }
+  server_side_encryption { enabled = true }
+  tags = local.tags
+}
+
+resource "aws_sesv2_email_identity" "admin" {
+  email_identity = var.email_admin
+}
+
 resource "aws_sns_topic" "notificacoes" {
   name = "${var.nome}-notificacoes"
   tags = local.tags
@@ -65,8 +81,14 @@ resource "aws_cognito_user_pool_client" "api" {
   }
 }
 
+resource "aws_cognito_user_group" "professores" {
+  name         = "Professores"
+  user_pool_id = aws_cognito_user_pool.alunos.id
+  description  = "Professores autorizados a cadastrar e-mail e solicitar relatórios"
+}
+
 resource "aws_iam_role" "lambda" {
-  for_each = toset(["receber", "notificar", "relatorio"])
+  for_each = toset(["receber", "notificar", "relatorio", "cadastrar-email", "solicitar-relatorio"])
   name     = "${var.nome}-${each.key}"
   assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "lambda.amazonaws.com" }, Action = "sts:AssumeRole" }] })
   tags = local.tags
@@ -83,7 +105,9 @@ resource "aws_iam_role_policy" "notificar" {
   role = aws_iam_role.lambda["notificar"].id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["dynamodb:DescribeStream", "dynamodb:GetRecords", "dynamodb:GetShardIterator", "dynamodb:ListStreams"], Resource = aws_dynamodb_table.avaliacoes.stream_arn },
-    { Effect = "Allow", Action = ["sns:Publish"], Resource = aws_sns_topic.notificacoes.arn }
+    { Effect = "Allow", Action = ["dynamodb:Scan"], Resource = aws_dynamodb_table.professores.arn },
+    { Effect = "Allow", Action = ["ses:SendEmail"], Resource = aws_sesv2_email_identity.admin.arn },
+    { Effect = "Allow", Action = ["ses:GetEmailIdentity"], Resource = "*" }
   ] })
 }
 
@@ -92,7 +116,26 @@ resource "aws_iam_role_policy" "relatorio" {
   role = aws_iam_role.lambda["relatorio"].id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["dynamodb:Query"], Resource = aws_dynamodb_table.avaliacoes.arn },
-    { Effect = "Allow", Action = ["sns:Publish"], Resource = aws_sns_topic.notificacoes.arn }
+    { Effect = "Allow", Action = ["dynamodb:Scan"], Resource = aws_dynamodb_table.professores.arn },
+    { Effect = "Allow", Action = ["ses:SendEmail"], Resource = aws_sesv2_email_identity.admin.arn },
+    { Effect = "Allow", Action = ["ses:GetEmailIdentity"], Resource = "*" }
+  ] })
+}
+
+resource "aws_iam_role_policy" "cadastrar_email" {
+  name = "gerenciar-email-professor"
+  role = aws_iam_role.lambda["cadastrar-email"].id
+  policy = jsonencode({ Version = "2012-10-17", Statement = [
+    { Effect = "Allow", Action = ["dynamodb:PutItem", "dynamodb:DeleteItem"], Resource = aws_dynamodb_table.professores.arn },
+    { Effect = "Allow", Action = ["ses:CreateEmailIdentity"], Resource = "*" }
+  ] })
+}
+
+resource "aws_iam_role_policy" "solicitar_relatorio" {
+  name = "invocar-relatorio"
+  role = aws_iam_role.lambda["solicitar-relatorio"].id
+  policy = jsonencode({ Version = "2012-10-17", Statement = [
+    { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = aws_lambda_function.funcao["relatorio"].arn }
   ] })
 }
 
@@ -111,7 +154,7 @@ resource "aws_iam_role_policy" "logs" {
 }
 
 resource "aws_lambda_function" "funcao" {
-  for_each         = { receber = "ReceberAvaliacao", notificar = "NotificarUrgencia", relatorio = "RelatorioSemanal" }
+  for_each         = { receber = "ReceberAvaliacao", notificar = "NotificarUrgencia", relatorio = "RelatorioSemanal", cadastrar-email = "CadastrarEmail", solicitar-relatorio = "SolicitarRelatorio" }
   function_name    = "${var.nome}-${each.key}"
   filename         = var.artefato_jar
   source_code_hash = filebase64sha256(var.artefato_jar)
@@ -124,7 +167,10 @@ resource "aws_lambda_function" "funcao" {
   environment {
     variables = {
       TABELA_AVALIACOES  = aws_dynamodb_table.avaliacoes.name
+      TABELA_PROFESSORES = aws_dynamodb_table.professores.name
       TOPICO_NOTIFICACOES = aws_sns_topic.notificacoes.arn
+      EMAIL_ADMIN         = var.email_admin
+      FUNCAO_RELATORIO    = "${var.nome}-relatorio"
     }
   }
   depends_on = [aws_iam_role_policy.logs, aws_cloudwatch_log_group.lambda]
@@ -190,6 +236,20 @@ resource "aws_apigatewayv2_integration" "receber" {
   payload_format_version = "2.0"
 }
 
+resource "aws_apigatewayv2_integration" "cadastrar_email" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.funcao["cadastrar-email"].invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_integration" "solicitar_relatorio" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.funcao["solicitar-relatorio"].invoke_arn
+  payload_format_version = "2.0"
+}
+
 resource "aws_apigatewayv2_integration" "openapi" {
   api_id                 = aws_apigatewayv2_api.api.id
   integration_type       = "HTTP_PROXY"
@@ -250,6 +310,23 @@ resource "aws_apigatewayv2_route" "avaliacao" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "cadastrar_email" {
+  for_each           = toset(["POST", "DELETE"])
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "${each.key} /professores/email"
+  target             = "integrations/${aws_apigatewayv2_integration.cadastrar_email.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "solicitar_relatorio" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "POST /relatorio/solicitar"
+  target             = "integrations/${aws_apigatewayv2_integration.solicitar_relatorio.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.api.id
   name        = "$default"
@@ -267,6 +344,22 @@ resource "aws_lambda_permission" "api" {
   function_name = aws_lambda_function.funcao["receber"].function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/POST/avaliacao"
+}
+
+resource "aws_lambda_permission" "cadastrar_email" {
+  statement_id  = "AllowApiGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.funcao["cadastrar-email"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*/professores/email"
+}
+
+resource "aws_lambda_permission" "solicitar_relatorio" {
+  statement_id  = "AllowApiGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.funcao["solicitar-relatorio"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/POST/relatorio/solicitar"
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_erros" {

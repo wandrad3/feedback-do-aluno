@@ -104,6 +104,41 @@
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
         "pm.test('Acesso negado HTTP 401', function () { pm.response.to.have.status(401); });"
       ] } }]
+    },
+    {
+      "name": "07 - Cadastrar e-mail do professor",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"professor@exemplo.com\"}" },
+        "url": "{{base_url}}/professores/email"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Cadastro aguardando verificação HTTP 202', function () { pm.response.to.have.status(202); });"
+      ] } }]
+    },
+    {
+      "name": "08 - Solicitar relatório semanal",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+        "url": "{{base_url}}/relatorio/solicitar"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Envio solicitado HTTP 202', function () { pm.response.to.have.status(202); });"
+      ] } }]
+    },
+    {
+      "name": "09 - Remover e-mail do professor",
+      "request": {
+        "method": "DELETE",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+        "url": "{{base_url}}/professores/email"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Cadastro removido HTTP 200', function () { pm.response.to.have.status(200); });"
+      ] } }]
     }
   ]
 }

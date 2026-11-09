@@ -25,6 +25,8 @@ class FeedbackTest {
             assertNotNull(((java.util.function.Supplier<?>) campo.get(receber)).get());
             assertNotNull(new NotificarUrgencia());
             assertNotNull(new RelatorioSemanal());
+            assertNotNull(new CadastrarEmail());
+            assertNotNull(new SolicitarRelatorio());
         } finally {
             if (anterior == null) System.clearProperty("aws.region");
             else System.setProperty("aws.region", anterior);

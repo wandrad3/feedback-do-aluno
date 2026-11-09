@@ -13,27 +13,29 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
-import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.PublishRequest;
+import software.amazon.awssdk.services.sesv2.SesV2Client;
 
 public final class RelatorioSemanal implements RequestHandler<Map<String, Object>, String> {
     private static final int MAX_BYTES = 220_000;
     private final DynamoDbClient dynamo;
-    private final SnsClient sns;
+    private final EmailCorporativo email;
     private final String tabela;
-    private final String topico;
     private final Clock clock;
 
     public RelatorioSemanal() {
-        this(DynamoDbClient.create(), SnsClient.create(), System.getenv("TABELA_AVALIACOES"),
-                System.getenv("TOPICO_NOTIFICACOES"), Clock.systemUTC());
+        this(DynamoDbClient.create(), SesV2Client.create(), System.getenv("TABELA_AVALIACOES"),
+                System.getenv("TABELA_PROFESSORES"), System.getenv("EMAIL_ADMIN"), Clock.systemUTC());
     }
 
-    RelatorioSemanal(DynamoDbClient dynamo, SnsClient sns, String tabela, String topico, Clock clock) {
+    RelatorioSemanal(DynamoDbClient dynamo, SesV2Client ses, String tabela, String tabelaProfessores,
+                     String emailAdmin, Clock clock) {
+        this(dynamo, new EmailCorporativo(dynamo, ses, tabelaProfessores, emailAdmin), tabela, clock);
+    }
+
+    RelatorioSemanal(DynamoDbClient dynamo, EmailCorporativo email, String tabela, Clock clock) {
         this.dynamo = dynamo;
-        this.sns = sns;
+        this.email = email;
         this.tabela = tabela;
-        this.topico = topico;
         this.clock = clock;
     }
 
@@ -87,8 +89,8 @@ public final class RelatorioSemanal implements RequestHandler<Map<String, Object
         partes.add(atual.toString());
         for (int i = 0; i < partes.size(); i++) {
             String mensagem = "Relatorio %s - parte %d/%d%n%s".formatted(semana, i + 1, partes.size(), partes.get(i));
-            sns.publish(PublishRequest.builder().topicArn(topico).subject("Relatorio semanal de avaliacoes")
-                    .message(mensagem).build());
+            email.enviar("Instituto Aurora | Relatório semanal de avaliações",
+                    "Relatório semanal de avaliações", "Prezada equipe,\n\nSegue o consolidado dos feedbacks da semana anterior.\n\n" + mensagem);
         }
     }
 }

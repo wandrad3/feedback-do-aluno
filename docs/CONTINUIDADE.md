@@ -2,6 +2,13 @@
 
 Atualizado em **9 de novembro de 2026**. Este arquivo registra o estado verificado do projeto para retomar o trabalho sem expor credenciais.
 
+## Ampliação solicitada: e-mail do professor e relatório manual
+
+- O código local implementa `POST /professores/email`, `DELETE /professores/email` e `POST /relatorio/solicitar`, todos com JWT e checagem do grupo Cognito `Professores`. Alertas e relatórios passam a ser enviados pelo SES em HTML e texto, com a marca fictícia Instituto Aurora. A configuração Terraform cria tabela de e-mails, grupo, duas Lambdas e alarmes. OpenAPI, Swagger UI, collection e manual foram atualizados.
+- `mvn clean verify` passou com **13 testes**, **189 linhas e 70 ramos cobertos**, sem faltas. Terraform `fmt -check`, `validate` e `git diff --check` passaram. O plano da aplicação prevê **21 recursos novos, 5 alterações e nenhuma destruição**.
+- O bootstrap da conta **315205584370** já recebeu permissão SES para o papel OIDC do deploy. A identidade SES do endereço administrativo foi criada isoladamente em `us-east-2`; a AWS enviou a mensagem de verificação ao proprietário. A conta SES está em sandbox; o remetente e cada professor destinatário precisam confirmar os respectivos endereços.
+- **A aplicação nova ainda não foi implantada.** O alerta e o relatório atualmente em produção continuam no SNS até a confirmação da identidade SES e o deploy completo. Depois da confirmação, integrar o usuário `professor-demo` ao grupo `Professores`, executar o pipeline e validar cadastro, alerta HTML e relatório manual com dados fictícios. Não registrar senhas ou tokens aqui.
+
 ## Objetivo
 
 Concluir a plataforma pública de feedback do aluno em Java 21, AWS `us-east-2`, Terraform e GitHub Actions, com análise SonarQube Cloud, cobertura JaCoCo de 100% e recursos adequados a uma conta AWS de estudante. O repositório é [wandrad3/feedback-do-aluno](https://github.com/wandrad3/feedback-do-aluno).
