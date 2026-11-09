@@ -216,7 +216,8 @@ resource "aws_apigatewayv2_integration" "swagger_ui" {
   response_parameters {
     status_code = 200
     mappings = {
-      "overwrite:header.Content-Type" = "text/html; charset=utf-8"
+      "overwrite:header.Content-Type"            = "text/html; charset=utf-8"
+      "overwrite:header.Content-Security-Policy" = "default-src 'none'; script-src https://unpkg.com 'unsafe-inline'; style-src https://unpkg.com 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self' data:; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
     }
   }
 }
