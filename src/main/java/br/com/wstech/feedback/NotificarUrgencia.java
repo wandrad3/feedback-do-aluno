@@ -24,9 +24,9 @@ public final class NotificarUrgencia implements RequestHandler<DynamodbEvent, St
     public String handleRequest(DynamodbEvent evento, Context context) {
         int enviadas = 0;
         for (DynamodbEvent.DynamodbStreamRecord registro : evento.getRecords()) {
-            if (!"INSERT".equals(registro.getEventName())) continue;
+            if (!"INSERT".equals(registro.getEventName())
+                    || !"CRITICA".equals(registro.getDynamodb().getNewImage().get("urgencia").getS())) continue;
             Map<String, com.amazonaws.services.lambda.runtime.events.models.dynamodb.AttributeValue> imagem = registro.getDynamodb().getNewImage();
-            if (!"CRITICA".equals(imagem.get("urgencia").getS())) continue;
             sns.publish(PublishRequest.builder().topicArn(topico).subject("Avaliacao critica recebida")
                     .message("Descricao: %s%nUrgencia: %s%nData de envio: %s".formatted(
                             imagem.get("descricao").getS(), imagem.get("urgencia").getS(), imagem.get("enviadoEm").getS())).build());
