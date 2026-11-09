@@ -31,7 +31,7 @@ Notas **0 a 3** são `CRITICA`; notas **4 a 10** são `NORMAL`. O caminho ASCII 
 
 ## Pré-requisitos
 
-- Conta AWS de estudante **315205584370**, projeto na região **us-east-2**. A região do Identity Center informada separadamente é us-east-1 e não muda a região do projeto.
+- Conta AWS de estudante **315205584370**, aplicação na região **us-east-2**. O login do projeto usa **us-east-1**; a região do login não altera a região da infraestrutura.
 - AWS CLI **2.32.0 ou superior** para `aws login`, Terraform **1.10.0 ou superior**, Java **21**, Maven **3.9** e GitHub CLI autenticado como `wandrad3`.
 - Projeto público no SonarQube Cloud `wandrad3profile-projects`, com chave `wandrad3profile-projects_wandrad3-feedback-do-aluno`, e token de análise cadastrado no GitHub. A organização ainda precisa ser vinculada ao GitHub para habilitar a integração com PRs.
 - E-mail do administrador para alertas e relatórios. Após criar a inscrição SNS, o destinatário precisa clicar no link de confirmação.
@@ -39,11 +39,14 @@ Notas **0 a 3** são `CRITICA`; notas **4 a 10** são `NORMAL`. O caminho ASCII 
 Confira o alvo antes de qualquer Terraform:
 
 ```bash
-aws login --profile feedback-aluno-projeto --region us-east-2
+aws login --profile feedback-aluno-projeto --region us-east-1
 aws sts get-caller-identity --profile feedback-aluno-projeto
+aws configure set credential_process 'aws configure export-credentials --profile feedback-aluno-projeto --format process' --profile feedback-aluno-terraform
+aws configure set region us-east-2 --profile feedback-aluno-terraform
+aws sts get-caller-identity --profile feedback-aluno-terraform
 ```
 
-O campo `Account` deve ser `315205584370`. Não use o perfil `default` desta máquina, pois ele aponta para outra conta.
+O campo `Account` deve ser `315205584370` nos dois perfis. `feedback-aluno-terraform` fornece credenciais temporárias ao provedor Terraform. Não use o perfil `default` desta máquina, pois ele aponta para outra conta.
 
 ## Build e qualidade
 
@@ -64,7 +67,7 @@ terraform init
 terraform apply -var="github_repository_id=<ID_REPOSITORIO>"
 ```
 
-Execute o bootstrap somente com `AWS_PROFILE=feedback-aluno-projeto` depois de conferir o ID da conta. O arquivo de estado local de bootstrap fica ignorado pelo Git e deve ser guardado até o encerramento. O bucket é `feedback-aluno-tfstate-315205584370`.
+Execute o bootstrap somente com `AWS_PROFILE=feedback-aluno-terraform` depois de conferir o ID da conta. O arquivo de estado local de bootstrap fica ignorado pelo Git e deve ser guardado até o encerramento. O bucket é `feedback-aluno-tfstate-315205584370`.
 
 Configure o novo repositório no GitHub. Informe o token sem colocá-lo em histórico de shell nem em arquivos versionados:
 
