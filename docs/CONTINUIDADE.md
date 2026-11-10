@@ -1,12 +1,13 @@
 # Continuidade em uma nova conversa
 
-Atualizado em **9 de novembro de 2026**. Este arquivo registra o estado verificado do projeto para retomar o trabalho sem expor credenciais.
+Atualizado em **10 de novembro de 2026**. Este arquivo registra o estado verificado do projeto para retomar o trabalho sem expor credenciais.
 
-## Estado atual: e-mail do professor e relatório manual
+## Estado atual: identidade da faculdade e relatório semanal
 
-- O [PR #2](https://github.com/wandrad3/feedback-do-aluno/pull/2) foi integrado à `main` e o [deploy](https://github.com/wandrad3/feedback-do-aluno/actions/runs/42694590095) passou na conta **315205584370**, região **us-east-2**. `POST /professores/email`, `DELETE /professores/email` e `POST /relatorio/solicitar` estão ativos com JWT e checagem do grupo Cognito `Professores`. A versão seguinte troca a identidade dos e-mails para **FACULDADE DO ALUNO**, em preto e branco, e detalha o relatório semanal.
-- `mvn clean verify` passou com **13 testes**, **189 linhas e 70 ramos cobertos**, sem faltas. Terraform `fmt -check`, `validate` e `git diff --check` passaram. O plano da aplicação prevê **21 recursos novos, 5 alterações e nenhuma destruição**.
-- O bootstrap recebeu permissão SES para o papel OIDC. A identidade SES do remetente está **verificada**. A conta SES continua em sandbox; cada professor destinatário precisa confirmar o próprio endereço.
+- O [deploy da versão atual](https://github.com/wandrad3/feedback-do-aluno/actions/runs/42832710757) passou na conta **315205584370**, região **us-east-2**. Os e-mails usam a marca fictícia **FACULDADE DO ALUNO** em preto e branco. O relatório semanal agora traz período, total, média, contagens críticas e normais, contagem por dia e por nota, além de data, hora, nota e descrição de cada avaliação.
+- `mvn clean verify` passou com **13 testes** e **100% de linhas e ramos cobertos**. A etapa de qualidade, incluindo Sonar e validação Terraform, passou no pipeline. O plano da aplicação atualizou Lambdas e substituiu a assinatura SNS; não recriou a identidade SES verificada.
+- O secret `EMAIL_ADMIN` e as variáveis das Lambdas apontam ao novo Gmail. A identidade SES está **verificada**; as duas identidades FIAP antigas foram excluídas. A conta SES continua em sandbox; cada professor destinatário precisa confirmar o próprio endereço. A assinatura SNS do novo Gmail aguarda confirmação do link enviado pela AWS.
+- A Lambda de relatório foi invocada após o deploy, retornou `2026-W45` com HTTP `200` e sem erro. Confirmar com o destinatário o recebimento e a apresentação do HTML.
 - `professor-demo` foi incluído no grupo `Professores`; o usuário deve entrar novamente para obter token com o grupo atualizado. Um usuário de teste temporário confirmou cadastro `202`, relatório manual `202`, avaliação crítica `201` e remoção do cadastro `200`; a avaliação e o usuário foram excluídos. As Lambdas de alerta e relatório executaram sem erros nos logs recentes, e o SES registrou envios. Confirmar com o destinatário se os e-mails HTML chegaram à caixa de entrada. Não registrar senhas ou tokens aqui.
 
 ## Objetivo
@@ -36,10 +37,10 @@ Concluir a plataforma pública de feedback do aluno em Java 21, AWS `us-east-2`,
 ## Próximos passos
 
 1. **Vincular Sonar e GitHub.** Na [organização Sonar](https://sonarcloud.io/organizations/wandrad3profile-projects/projects), conectar `wandrad3` ao GitHub e dar acesso ao repositório `wandrad3/feedback-do-aluno`. Depois, no projeto, abrir **Administration → General Settings → Repository binding** e selecionar esse repositório. A automação do Chrome continuou indisponível nesta conversa.
-2. **Conferir recebimento.** O SES aceitou os envios do alerta crítico e do relatório manual, e as Lambdas executaram sem erro. Confirmar com o destinatário que os e-mails HTML chegaram; se não, verificar spam, SES e logs. O SNS continua reservado aos alarmes técnicos.
+2. **Conferir recebimento e confirmar SNS.** Confirmar com o destinatário que o novo relatório HTML chegou. Confirmar o link do SNS recebido no Gmail para ativar os alarmes técnicos; a verificação SES já foi concluída. Se o relatório não chegar, verificar spam, SES e logs.
 3. **Preparar a entrega.** Conferir o [manual público da API](USO-DA-API.md) e entregar o manual privado já criado aos professores por um canal seguro. Verificar elegibilidade e uso do Free Tier na conta.
 4. **Encerrar após avaliação.** Usar o fluxo manual `destroy` do GitHub Actions somente quando a remoção tiver sido autorizada.
 
 ## Texto para iniciar a próxima conversa
 
-> Continue o projeto em `D:\wstech\projetos\feedback-do-aluno`. Leia `docs/CONTINUIDADE.md` e `README.md` primeiro. O [deploy da versão com e-mail do professor e relatório manual](https://github.com/wandrad3/feedback-do-aluno/actions/runs/42694590095) passou na conta `315205584370`, região `us-east-2`. A identidade SES do remetente está verificada; a conta permanece em sandbox, portanto cada professor deve verificar seu endereço. O usuário `professor-demo` está no grupo `Professores` e deve entrar novamente para atualizar o token. As novas rotas responderam aos testes autenticados, o SES registrou envios e os dados fictícios foram removidos. Confirmar com o destinatário o recebimento do HTML. A organização Sonar ainda precisa ser vinculada ao GitHub. Não publique credenciais nem use o perfil AWS `default`.
+> Continue o projeto em `D:\wstech\projetos\feedback-do-aluno`. Leia `docs/CONTINUIDADE.md` e `README.md` primeiro. O [deploy da identidade FACULDADE DO ALUNO e do relatório detalhado](https://github.com/wandrad3/feedback-do-aluno/actions/runs/42832710757) passou na conta `315205584370`, região `us-east-2`. A identidade SES do Gmail está verificada; a conta permanece em sandbox, portanto cada professor deve verificar seu endereço. A Lambda de relatório executou sem erro após o deploy. Confirmar o recebimento do HTML e o link SNS para alarmes técnicos. A organização Sonar ainda precisa ser vinculada ao GitHub. Não publique credenciais nem use o perfil AWS `default`.
