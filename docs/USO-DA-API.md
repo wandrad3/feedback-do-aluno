@@ -14,7 +14,7 @@ A aplicação está na conta AWS **315205584370**, região **us-east-2**. Para t
 
 **No Swagger UI:** abra [swagger-ui.html](https://vilam86911.execute-api.us-east-2.amazonaws.com/swagger-ui.html), informe usuário e senha no quadro **Autenticação Cognito** e clique em **Entrar e autorizar**. A página envia a senha diretamente ao Cognito por HTTPS e usa o AccessToken retornado para autorizar o `POST /avaliacao`. Ela limpa o campo de senha após o login e não guarda o token após atualizar ou fechar a página.
 
-**No Postman:** importe a collection, preencha as variáveis `usuario` e `senha` com as credenciais recebidas e execute **01 - Autenticar no Cognito**. A requisição usa `USER_PASSWORD_AUTH` e guarda `AuthenticationResult.AccessToken` na variável `access_token` da collection. Não exporte a collection depois de preenchê-la com credenciais ou token.
+**No Postman:** importe a collection, preencha as variáveis `usuario` e `senha` com as credenciais recebidas e execute **01 - Autenticar no Cognito**. Para testar o cadastro do professor, preencha também `email_professor` com um endereço seu e confirme o link enviado pelo SES. A requisição de autenticação usa `USER_PASSWORD_AUTH` e guarda `AuthenticationResult.AccessToken` na variável `access_token` da collection. Não exporte a collection depois de preenchê-la com credenciais ou token.
 
 **No terminal:** faça a mesma autenticação no endpoint público `https://cognito-idp.us-east-2.amazonaws.com/`. Substitua `<USUARIO>` e `<SENHA>`; o ID do cliente já está preenchido:
 
@@ -48,7 +48,7 @@ Os alertas e relatórios são enviados em HTML preto e branco com a marca fictí
 
 ## 3. Testar no Postman
 
-Após **01 - Autenticar no Cognito**, execute **03 - Avaliação normal**, **05 - Nota inválida** e **06 - Sem token**. A requisição **04 - Avaliação crítica** envia um alerta real. A requisição **02 - Consultar OpenAPI** verifica o contrato publicado. Professores podem usar **07 - Cadastrar e-mail**, **08 - Solicitar relatório** e **09 - Remover e-mail**. Os testes da collection verificam os códigos HTTP e os campos principais das respostas.
+Após **01 - Autenticar no Cognito**, execute **03 - Avaliação normal**, **05 - Nota inválida** e **06 - Sem token**. A requisição **04 - Avaliação crítica** envia um alerta real. A requisição **02 - Consultar OpenAPI** verifica o contrato publicado. Professores podem usar **07 - Cadastrar e-mail** com `email_professor`, **08 - Solicitar relatório** e **09 - Remover e-mail**. O `202` da solicitação confirma o início do processamento; confira o relatório recebido na caixa de entrada. Os testes da collection verificam os códigos HTTP e os campos principais das respostas.
 
 ## 4. Testar com curl
 

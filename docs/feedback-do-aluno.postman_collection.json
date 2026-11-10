@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Feedback do Aluno",
-    "description": "Testes da API implantada na conta AWS 315205584370. Informe usuario e senha do Cognito nas variáveis locais da collection. A senha não é versionada.",
+    "name": "FACULDADE DO ALUNO | Feedback do Aluno",
+    "description": "Testes da API implantada na conta AWS 315205584370, região us-east-2. Preencha usuario, senha e email_professor nas variáveis locais. Execute 01 para obter o AccessToken antes das rotas protegidas. 03 e 04 criam avaliações fictícias; 04 envia um alerta real. 07 solicita a verificação SES do e-mail informado; confirme o link da AWS antes de esperar mensagens. 08 aciona o relatório da semana anterior em HTML preto e branco, com período, média, contagens e detalhes das avaliações; HTTP 202 indica processamento, não entrega na caixa de entrada. 09 remove o cadastro do professor. Não exporte a collection após preencher credenciais ou token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -10,6 +10,7 @@
     { "key": "client_id", "value": "7l8o6012lm01h37ositatnsn36" },
     { "key": "usuario", "value": "" },
     { "key": "senha", "value": "" },
+    { "key": "email_professor", "value": "" },
     { "key": "access_token", "value": "" }
   ],
   "item": [
@@ -54,6 +55,7 @@
       "name": "03 - Avaliação normal",
       "request": {
         "method": "POST",
+        "description": "Use um usuário Cognito com token válido. A avaliação fica registrada e entra no próximo relatório da semana correspondente.",
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": { "mode": "raw", "raw": "{\"descricao\":\"Aula de teste clara e objetiva\",\"nota\":9}" },
@@ -68,6 +70,7 @@
       "name": "04 - Avaliação crítica (envia alerta ao administrador)",
       "request": {
         "method": "POST",
+        "description": "Cria um registro fictício com nota 2 e envia um alerta real aos destinatários SES verificados. Use conscientemente.",
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": { "mode": "raw", "raw": "{\"descricao\":\"Aula fictícia para validar alerta\",\"nota\":2}" },
@@ -109,35 +112,41 @@
       "name": "07 - Cadastrar e-mail do professor",
       "request": {
         "method": "POST",
+        "description": "Exige usuário do grupo Professores. Preencha email_professor com um endereço que você controla e confirme o link enviado pelo SES. Em sandbox, só endereços verificados recebem alertas e relatórios.",
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\"email\":\"professor@exemplo.com\"}" },
+        "body": { "mode": "raw", "raw": "{\"email\":\"{{email_professor}}\"}" },
         "url": "{{base_url}}/professores/email"
       },
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-        "pm.test('Cadastro aguardando verificação HTTP 202', function () { pm.response.to.have.status(202); });"
+        "pm.test('Cadastro aguardando verificação HTTP 202', function () { pm.response.to.have.status(202); });",
+        "pm.test('Orientação de verificação presente', function () { pm.expect(pm.response.json().mensagem).to.include('Verifique seu e-mail'); });"
       ] } }]
     },
     {
       "name": "08 - Solicitar relatório semanal",
       "request": {
         "method": "POST",
+        "description": "Exige usuário do grupo Professores. Solicita de forma assíncrona o relatório da semana ISO anterior, no horário de São Paulo. O e-mail FACULDADE DO ALUNO informa período, total, média, críticas e normais, volume por dia e por nota e detalhes de cada avaliação. A resposta 202 confirma a solicitação; confira o recebimento no endereço SES verificado.",
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
         "url": "{{base_url}}/relatorio/solicitar"
       },
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-        "pm.test('Envio solicitado HTTP 202', function () { pm.response.to.have.status(202); });"
+        "pm.test('Envio solicitado HTTP 202', function () { pm.response.to.have.status(202); });",
+        "pm.test('Processamento assíncrono informado', function () { pm.expect(pm.response.json().mensagem).to.include('em processamento'); });"
       ] } }]
     },
     {
       "name": "09 - Remover e-mail do professor",
       "request": {
         "method": "DELETE",
+        "description": "Remove apenas o e-mail associado ao professor autenticado. Execute após testar o cadastro e o relatório se não quiser continuar recebendo mensagens.",
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
         "url": "{{base_url}}/professores/email"
       },
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-        "pm.test('Cadastro removido HTTP 200', function () { pm.response.to.have.status(200); });"
+        "pm.test('Cadastro removido HTTP 200', function () { pm.response.to.have.status(200); });",
+        "pm.test('Remoção confirmada', function () { pm.expect(pm.response.json().mensagem).to.eql('Cadastro removido'); });"
       ] } }]
     }
   ]
