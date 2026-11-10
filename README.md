@@ -26,7 +26,7 @@ flowchart LR
   GitHub[GitHub Actions] -->|OIDC + Terraform| AWS[AWS us-east-2]
 ```
 
-As cinco funções Lambda seguem responsabilidades distintas. O registro usa a semana ISO como chave de partição e um UUID como chave de ordenação no DynamoDB. O relatório consulta apenas a partição da semana anterior, calcula média, contagens por dia e urgência e inclui cada descrição, nota e data. Mensagens grandes são divididas em partes identificadas. O aviso crítico inclui descrição, urgência e data de envio. Alertas e relatórios usam e-mail HTML do **Instituto Aurora**, com versão em texto. Os alarmes de infraestrutura continuam no SNS.
+As cinco funções Lambda seguem responsabilidades distintas. O registro usa a semana ISO como chave de partição e um UUID como chave de ordenação no DynamoDB. O relatório consulta apenas a partição da semana anterior e informa período, total, média, quantidade de avaliações críticas e normais, contagem em cada dia e distribuição das notas de 0 a 10. Cada avaliação inclui data e hora de São Paulo, nota, classificação e descrição. Mensagens grandes são divididas em partes identificadas, com o resumo repetido em cada parte. O aviso crítico inclui descrição, urgência e data de envio. Alertas e relatórios usam e-mail HTML em preto e branco da **FACULDADE DO ALUNO**, com versão em texto. Os alarmes de infraestrutura continuam no SNS.
 
 ## API
 
@@ -102,9 +102,9 @@ O deploy da versão com cadastro de professores e e-mails HTML na conta **315205
 | ID do cliente Cognito | `7l8o6012lm01h37ositatnsn36` |
 | ID do User Pool | `us-east-2_N2DycwX8K` |
 
-O endereço administrativo correto está configurado no secret `EMAIL_ADMIN`; sua identidade SES está **verificada** e a assinatura SNS para alarmes técnicos está **confirmada**. A avaliação crítica fictícia acionou a Lambda de notificação, e a solicitação manual executou a Lambda de relatório. Os logs recentes dessas funções não registraram erros, e a cota SES registrou envios. O recebimento na caixa de entrada ainda deve ser confirmado pelo destinatário. O SNS não é mais usado para alertas de avaliações nem relatórios.
+O endereço administrativo é configurado no secret `EMAIL_ADMIN`; sua identidade SES deve estar **verificada** e a assinatura SNS para alarmes técnicos deve estar **confirmada**. A avaliação crítica fictícia acionou a Lambda de notificação, e a solicitação manual executou a Lambda de relatório. Os logs dessas funções não registraram erros no teste anterior, e a cota SES registrou envios. Confirme o recebimento na caixa de entrada após cada troca de endereço. O SNS não é usado para alertas de avaliações nem relatórios.
 
-Se o endereço do administrador mudar, atualize o secret `EMAIL_ADMIN` e acione o deploy com um push à `main`. O Terraform substituirá a assinatura SNS e a identidade SES; o novo destinatário precisará confirmar as duas mensagens de verificação. Não publique o endereço no repositório.
+Se o endereço do administrador mudar, verifique a nova identidade no SES, atualize o secret `EMAIL_ADMIN` e acione o deploy com um push à `main`. Se a identidade já tiver sido criada fora do Terraform para receber o link de verificação, importe-a para o estado antes do deploy. O Terraform substituirá a assinatura SNS; o novo destinatário precisará confirmar a mensagem do SNS para os alarmes técnicos. Não publique o endereço no repositório.
 
 Para testar localmente um `plan` com o perfil correto:
 
@@ -120,7 +120,7 @@ No PowerShell, defina `$env:TF_VAR_email_admin` antes do comando `terraform plan
 
 O grupo Cognito `Professores` controla `POST /professores/email`, `DELETE /professores/email` e `POST /relatorio/solicitar`. O usuário `professor-demo` já foi incluído no grupo. Ele precisa entrar novamente para obter um token com o grupo atualizado.
 
-O remetente SES em `EMAIL_ADMIN` está verificado. A conta SES está em **sandbox**: cada professor cadastrado recebe um link de verificação da AWS; somente endereços verificados recebem os alertas e relatórios HTML. O e-mail usa a marca fictícia **Instituto Aurora** e inclui versão em texto. O modelo escapa o conteúdo das avaliações antes de inseri-lo no HTML. O endpoint manual envia o relatório da **semana anterior**, igual ao agendamento automático.
+O remetente SES em `EMAIL_ADMIN` precisa estar verificado. A conta SES está em **sandbox**: cada professor cadastrado recebe um link de verificação da AWS; somente endereços verificados recebem os alertas e relatórios HTML. O e-mail usa a marca fictícia **FACULDADE DO ALUNO**, em preto e branco, e inclui versão em texto. O modelo escapa o conteúdo das avaliações antes de inseri-lo no HTML. O endpoint manual envia o relatório da **semana anterior**, igual ao agendamento automático.
 
 ## Usuário de demonstração
 

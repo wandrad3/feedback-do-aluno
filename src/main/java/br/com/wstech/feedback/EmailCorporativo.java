@@ -63,17 +63,17 @@ final class EmailCorporativo {
     static String pagina(String titulo, String texto) {
         String corpo = escapar(texto).replace("\n", "<br>");
         return "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"></head>"
-                + "<body style=\"margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#172554\">"
-                + "<table role=\"presentation\" style=\"width:100%;padding:32px 12px\"><tr><td align=\"center\">"
-                + "<table role=\"presentation\" style=\"max-width:600px;width:100%;background:#fff;border-radius:12px;border:1px solid #dbeafe\">"
-                + "<tr><td style=\"background:#123b70;padding:24px;color:#fff\">"
-                + "<span style=\"display:inline-block;background:#fbbf24;color:#123b70;font-weight:bold;font-size:20px;padding:12px;border-radius:10px\">IA</span>"
-                + "<span style=\"font-size:21px;font-weight:bold;margin-left:12px\">Instituto Aurora</span></td></tr>"
-                + "<tr><td style=\"padding:30px\"><h1 style=\"font-size:22px;margin-top:0\">" + escapar(titulo) + "</h1>"
-                + "<p style=\"line-height:1.65;font-size:15px\">" + corpo + "</p>"
-                + "<p style=\"font-size:14px;color:#475569\">Atenciosamente,<br><strong>Equipe de Qualidade Acadêmica</strong></p>"
-                + "</td></tr><tr><td style=\"padding:18px 30px;background:#eff6ff;font-size:12px;color:#475569\">"
-                + "Instituto Aurora · Comunicação automática do programa de qualidade das aulas.</td></tr></table>"
+                + "<body style=\"margin:0;background:#0b0b0b;font-family:Arial,sans-serif;color:#111\">"
+                + "<table role=\"presentation\" style=\"width:100%;padding:24px 12px\"><tr><td align=\"center\">"
+                + "<table role=\"presentation\" style=\"max-width:600px;width:100%;background:#fff\">"
+                + "<tr><td style=\"padding:40px 44px 16px\">"
+                + "<span style=\"display:inline-block;background:#000;color:#fff;font-weight:bold;font-size:22px;letter-spacing:3px;padding:8px 15px\">ALUN</span>"
+                + "<p style=\"font-size:11px;letter-spacing:2px;margin:12px 0 0\">FACULDADE DO ALUNO</p></td></tr>"
+                + "<tr><td style=\"padding:0 44px 32px\"><h1 style=\"font-size:22px;margin:0 0 20px\">" + escapar(titulo) + "</h1>"
+                + "<p style=\"line-height:1.7;font-size:14px;white-space:normal\">" + corpo + "</p>"
+                + "<p style=\"font-size:13px;margin-top:28px\">Atenciosamente,<br><strong>Equipe de Qualidade Acadêmica</strong></p>"
+                + "</td></tr><tr><td style=\"padding:18px 44px;border-top:1px solid #ddd;font-size:11px;color:#555\">"
+                + "FACULDADE DO ALUNO · Comunicação automática de qualidade acadêmica.</td></tr></table>"
                 + "</td></tr></table></body></html>";
     }
 

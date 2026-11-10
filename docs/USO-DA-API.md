@@ -44,7 +44,7 @@ As operações abaixo exigem um usuário Cognito no grupo **Professores**. Depoi
 2. Para receber imediatamente o relatório da **semana anterior**, execute `POST /relatorio/solicitar`. A resposta `202` indica que o processamento começou; o relatório chegará por e-mail após a geração. Essa operação não altera o agendamento automático de segunda-feira às 9h.
 3. Para parar de receber alertas e relatórios, execute `DELETE /professores/email`. A resposta esperada é `200`.
 
-Os alertas e relatórios são enviados em HTML com a marca fictícia **Instituto Aurora** e também têm versão em texto. A conta SES ainda está no modo sandbox: remetente e destinatários precisam estar verificados na região `us-east-2`. O administrador do projeto precisa confirmar primeiro a identidade de remetente; se a confirmação estiver pendente, os novos envios HTML ainda não funcionarão. Os alarmes técnicos continuam chegando pelo SNS.
+Os alertas e relatórios são enviados em HTML preto e branco com a marca fictícia **FACULDADE DO ALUNO** e também têm versão em texto. O relatório semanal informa período, total, média, avaliações críticas e normais, quantidades por dia e por nota, além da data, classificação e descrição de cada avaliação. A conta SES ainda está no modo sandbox: remetente e destinatários precisam estar verificados na região `us-east-2`. O administrador do projeto precisa confirmar primeiro a identidade de remetente; se a confirmação estiver pendente, os novos envios HTML ainda não funcionarão. Os alarmes técnicos continuam chegando pelo SNS.
 
 ## 3. Testar no Postman
 

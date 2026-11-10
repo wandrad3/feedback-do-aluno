@@ -26,7 +26,7 @@ public final class NotificarUrgencia implements RequestHandler<DynamodbEvent, St
             if (!"INSERT".equals(registro.getEventName())
                     || !"CRITICA".equals(registro.getDynamodb().getNewImage().get("urgencia").getS())) continue;
             Map<String, com.amazonaws.services.lambda.runtime.events.models.dynamodb.AttributeValue> imagem = registro.getDynamodb().getNewImage();
-            email.enviar("Instituto Aurora | Avaliação crítica recebida", "Atenção: avaliação crítica",
+            email.enviar("FACULDADE DO ALUNO | Avaliação crítica recebida", "Atenção: avaliação crítica",
                     "Prezada equipe,\n\nUma avaliação de aula requer atenção.\n\nDescrição: %s\nUrgência: %s\nData de envio: %s"
                             .formatted(imagem.get("descricao").getS(), imagem.get("urgencia").getS(),
                                     imagem.get("enviadoEm").getS()));

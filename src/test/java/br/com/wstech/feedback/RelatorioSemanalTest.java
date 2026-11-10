@@ -25,7 +25,9 @@ class RelatorioSemanalTest {
         assertEquals("2026-W45", handler.handleRequest(Map.of(), null));
         var captor = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(email).enviar(anyString(), anyString(), captor.capture());
-        assertTrue(captor.getValue().contains("Media: 0,00"));
+        assertTrue(captor.getValue().contains("Média das notas: 0,00/10"));
+        assertTrue(captor.getValue().contains("Nenhuma avaliação recebida"));
+        assertTrue(captor.getValue().contains("02/11/2026 a 08/11/2026"));
     }
 
     @Test void paginaECalcula() {
@@ -38,7 +40,14 @@ class RelatorioSemanalTest {
         verify(dynamo, times(2)).query(any(QueryRequest.class));
         var captor = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(email).enviar(anyString(), anyString(), captor.capture());
-        assertTrue(captor.getValue().contains("Media: 5,00"));
+        assertTrue(captor.getValue().contains("Média das notas: 5,00/10"));
+        assertTrue(captor.getValue().contains("Avaliações críticas (0 a 3): 1"));
+        assertTrue(captor.getValue().contains("Avaliações normais (4 a 10): 1"));
+        assertTrue(captor.getValue().contains("9/10: 1"));
+        assertTrue(captor.getValue().contains("1/10: 1"));
+        assertTrue(captor.getValue().contains("03/11/2026: 1"));
+        assertTrue(captor.getValue().contains("04/11/2026: 1"));
+        assertTrue(captor.getValue().contains("02/11/2026: 0"));
         assertTrue(captor.getValue().contains("bom"));
         assertTrue(captor.getValue().contains("ruim"));
     }

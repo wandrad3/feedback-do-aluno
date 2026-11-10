@@ -33,7 +33,8 @@ class EmailCorporativoTest {
                 .enviar("Aviso", "Alerta <urgente>", "Descrição: <script>\nTeste & revisão");
         var enviados = org.mockito.ArgumentCaptor.forClass(SendEmailRequest.class);
         verify(ses, times(2)).sendEmail(enviados.capture());
-        assertTrue(enviados.getAllValues().get(0).content().simple().body().html().data().contains("Instituto Aurora"));
+        assertTrue(enviados.getAllValues().get(0).content().simple().body().html().data().contains("FACULDADE DO ALUNO"));
+        assertTrue(enviados.getAllValues().get(0).content().simple().body().html().data().contains("background:#000;color:#fff"));
         assertTrue(enviados.getAllValues().get(0).content().simple().body().html().data().contains("&lt;script&gt;"));
         assertFalse(enviados.getAllValues().get(0).content().simple().body().html().data().contains("<script>"));
         assertEquals("Descrição: <script>\nTeste & revisão", enviados.getAllValues().get(0).content().simple().body().text().data());
