@@ -96,7 +96,7 @@ def main():
         mensagem = item.get("message", "")
         if "ses:SendEmail" not in mensagem or "not authorized" not in mensagem:
             continue
-        recurso = re.search(r"on resource:\s*(\S+)", mensagem)
+        recurso = re.search(r"on resource\s+['\"]([^'\"]+)['\"]", mensagem)
         if recurso:
             arn = recurso.group(1).rstrip(".,;)")
             classe = "remetente" if arn == identidade_atual else (
