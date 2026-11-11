@@ -70,6 +70,15 @@ def main():
     print(f"eventos_cloudwatch={len(resposta.get('events', []))}")
     for tipo, quantidade in sorted(tipos.items()):
         print(f"erro_{tipo}={quantidade}")
+    acoes = ("ses:SendEmail", "ses:GetEmailIdentity", "dynamodb:Scan",
+             "dynamodb:GetItem", "logs:PutLogEvents")
+    for acao in acoes:
+        quantidade = sum(acao in item.get("message", "") and
+                         ("AccessDenied" in item.get("message", "") or
+                          "not authorized" in item.get("message", ""))
+                         for item in resposta.get("events", []))
+        if quantidade:
+            print(f"acao_negada_{acao}={quantidade}")
 
 
 if __name__ == "__main__":
