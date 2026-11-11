@@ -2,6 +2,7 @@
 *.tfstate*
 *.tfplan
 target/
+__pycache__/
 .idea/
 .vscode/
 *.log
