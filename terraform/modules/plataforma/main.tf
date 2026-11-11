@@ -3,13 +3,19 @@ locals {
   swagger_csp = "default-src 'none'; script-src https://unpkg.com 'unsafe-inline'; style-src https://unpkg.com 'unsafe-inline'; connect-src 'self' https://cognito-idp.us-east-2.amazonaws.com; img-src 'self' data:; font-src 'self' data:; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
 }
 
+data "aws_caller_identity" "atual" {}
+
+locals {
+  identidades_ses = "arn:aws:ses:${var.regiao}:${data.aws_caller_identity.atual.account_id}:identity/*"
+}
+
 resource "aws_dynamodb_table" "avaliacoes" {
-  name         = "${var.nome}-avaliacoes"
-  billing_mode = "PROVISIONED"
+  name           = "${var.nome}-avaliacoes"
+  billing_mode   = "PROVISIONED"
   read_capacity  = 1
   write_capacity = 1
-  hash_key  = "semana"
-  range_key = "id"
+  hash_key       = "semana"
+  range_key      = "id"
   attribute {
     name = "semana"
     type = "S"
@@ -88,15 +94,15 @@ resource "aws_cognito_user_group" "professores" {
 }
 
 resource "aws_iam_role" "lambda" {
-  for_each = toset(["receber", "notificar", "relatorio", "cadastrar-email", "solicitar-relatorio"])
-  name     = "${var.nome}-${each.key}"
+  for_each           = toset(["receber", "notificar", "relatorio", "cadastrar-email", "solicitar-relatorio"])
+  name               = "${var.nome}-${each.key}"
   assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "lambda.amazonaws.com" }, Action = "sts:AssumeRole" }] })
-  tags = local.tags
+  tags               = local.tags
 }
 
 resource "aws_iam_role_policy" "receber" {
-  name = "gravar-avaliacoes"
-  role = aws_iam_role.lambda["receber"].id
+  name   = "gravar-avaliacoes"
+  role   = aws_iam_role.lambda["receber"].id
   policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = ["dynamodb:PutItem"], Resource = aws_dynamodb_table.avaliacoes.arn }] })
 }
 
@@ -106,7 +112,8 @@ resource "aws_iam_role_policy" "notificar" {
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["dynamodb:DescribeStream", "dynamodb:GetRecords", "dynamodb:GetShardIterator", "dynamodb:ListStreams"], Resource = aws_dynamodb_table.avaliacoes.stream_arn },
     { Effect = "Allow", Action = ["dynamodb:Scan"], Resource = aws_dynamodb_table.professores.arn },
-    { Effect = "Allow", Action = ["ses:SendEmail"], Resource = aws_sesv2_email_identity.admin.arn },
+    { Effect = "Allow", Action = ["ses:SendEmail"], Resource = local.identidades_ses,
+    Condition = { StringEquals = { "ses:FromAddress" = var.email_admin } } },
     { Effect = "Allow", Action = ["ses:GetEmailIdentity"], Resource = "*" }
   ] })
 }
@@ -117,7 +124,8 @@ resource "aws_iam_role_policy" "relatorio" {
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["dynamodb:Query"], Resource = aws_dynamodb_table.avaliacoes.arn },
     { Effect = "Allow", Action = ["dynamodb:Scan"], Resource = aws_dynamodb_table.professores.arn },
-    { Effect = "Allow", Action = ["ses:SendEmail"], Resource = aws_sesv2_email_identity.admin.arn },
+    { Effect = "Allow", Action = ["ses:SendEmail"], Resource = local.identidades_ses,
+    Condition = { StringEquals = { "ses:FromAddress" = var.email_admin } } },
     { Effect = "Allow", Action = ["ses:GetEmailIdentity"], Resource = "*" }
   ] })
 }
@@ -150,7 +158,7 @@ resource "aws_iam_role_policy" "logs" {
   for_each = aws_iam_role.lambda
   name     = "escrever-logs"
   role     = each.value.id
-  policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.lambda[each.key].arn}:*" }] })
+  policy   = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.lambda[each.key].arn}:*" }] })
 }
 
 resource "aws_lambda_function" "funcao" {
@@ -166,15 +174,15 @@ resource "aws_lambda_function" "funcao" {
   architectures    = ["x86_64"]
   environment {
     variables = {
-      TABELA_AVALIACOES  = aws_dynamodb_table.avaliacoes.name
-      TABELA_PROFESSORES = aws_dynamodb_table.professores.name
+      TABELA_AVALIACOES   = aws_dynamodb_table.avaliacoes.name
+      TABELA_PROFESSORES  = aws_dynamodb_table.professores.name
       TOPICO_NOTIFICACOES = aws_sns_topic.notificacoes.arn
       EMAIL_ADMIN         = var.email_admin
       FUNCAO_RELATORIO    = "${var.nome}-relatorio"
     }
   }
   depends_on = [aws_iam_role_policy.logs, aws_cloudwatch_log_group.lambda]
-  tags = local.tags
+  tags       = local.tags
 }
 
 resource "aws_lambda_event_source_mapping" "stream" {
@@ -188,14 +196,14 @@ resource "aws_lambda_event_source_mapping" "stream" {
 }
 
 resource "aws_iam_role" "scheduler" {
-  name = "${var.nome}-scheduler"
+  name               = "${var.nome}-scheduler"
   assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "scheduler.amazonaws.com" }, Action = "sts:AssumeRole" }] })
-  tags = local.tags
+  tags               = local.tags
 }
 
 resource "aws_iam_role_policy" "scheduler" {
-  name = "invocar-relatorio"
-  role = aws_iam_role.scheduler.id
+  name   = "invocar-relatorio"
+  role   = aws_iam_role.scheduler.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = aws_lambda_function.funcao["relatorio"].arn }] })
 }
 

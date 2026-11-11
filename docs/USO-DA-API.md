@@ -74,7 +74,7 @@ curl -i -X POST 'https://vilam86911.execute-api.us-east-2.amazonaws.com/avaliaca
   -d '{"descricao":"Não consegui acompanhar a explicação","nota":2}'
 ```
 
-A resposta será `201` com `urgencia` igual a `CRITICA`. O SNS envia o aviso ao administrador que confirmou a assinatura. A entrega por e-mail pode levar alguns instantes.
+A resposta será `201` com `urgencia` igual a `CRITICA`. O SES envia o aviso ao administrador e aos professores com identidades verificadas; o SNS é usado apenas para alarmes técnicos. A entrega por e-mail pode levar alguns instantes.
 
 ## Respostas e limites
 
