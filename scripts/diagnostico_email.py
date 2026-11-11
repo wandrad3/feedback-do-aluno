@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+import urllib.parse
 
 
 REGIAO = "us-east-2"
@@ -53,6 +54,16 @@ def main():
     print("conta_aws=correta")
     print(f"ses_production_access={aws('sesv2', 'get-account')['ProductionAccessEnabled']}")
     print(f"remetente_ses_verificado={identidade_verificada(remetente)}")
+    politica = aws("iam", "get-role-policy", "--role-name", "feedback-aluno-notificar",
+                   "--policy-name", "ler-stream-e-publicar")["PolicyDocument"]
+    if isinstance(politica, str):
+        politica = json.loads(urllib.parse.unquote(politica))
+    recursos_envio = [recurso for declaracao in politica["Statement"]
+                      if "ses:SendEmail" in declaracao["Action"]
+                      for recurso in ([declaracao["Resource"]] if isinstance(declaracao["Resource"], str)
+                                      else declaracao["Resource"])]
+    identidade_atual = f"arn:aws:ses:{REGIAO}:{CONTA}:identity/{remetente}"
+    print(f"politica_envio_autoriza_remetente_atual={identidade_atual in recursos_envio or '*' in recursos_envio}")
 
     resposta = aws("dynamodb", "scan", "--table-name", "feedback-aluno-professores",
                    "--projection-expression", "email")
