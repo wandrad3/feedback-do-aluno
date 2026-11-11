@@ -113,6 +113,15 @@ def main():
         print(f"recurso_ses_negado_{classe}={quantidade}")
     for motivo, quantidade in sorted(motivos.items()):
         print(f"motivo_iam_{motivo}={quantidade}")
+    for item in resposta.get("events", []):
+        mensagem = item.get("message", "")
+        if "ses:SendEmail" in mensagem and "not authorized" in mensagem:
+            linha = mensagem.splitlines()[0]
+            linha = re.sub(r"arn:[^\s,;]+", "[ARN]", linha)
+            linha = re.sub(r"[\w.+%-]+@[\w.-]+", "[EMAIL]", linha)
+            linha = re.sub(r"https?://\S+", "[URL]", linha)
+            print(f"amostra_acesso_negado={linha[:300]}")
+            break
 
 
 if __name__ == "__main__":
