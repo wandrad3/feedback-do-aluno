@@ -90,6 +90,29 @@ def main():
                          for item in resposta.get("events", []))
         if quantidade:
             print(f"acao_negada_{acao}={quantidade}")
+    recursos_negados = collections.Counter()
+    motivos = collections.Counter()
+    for item in resposta.get("events", []):
+        mensagem = item.get("message", "")
+        if "ses:SendEmail" not in mensagem or "not authorized" not in mensagem:
+            continue
+        recurso = re.search(r"on resource:\s*(\S+)", mensagem)
+        if recurso:
+            arn = recurso.group(1).rstrip(".,;)")
+            classe = "remetente" if arn == identidade_atual else (
+                "professor" if arn in {f"arn:aws:ses:{REGIAO}:{CONTA}:identity/{e}"
+                                      for e in enderecos} else "outro")
+            recursos_negados[classe] += 1
+        if "no identity-based policy allows" in mensagem:
+            motivos["sem_permissao_na_politica"] += 1
+        elif "explicit deny" in mensagem:
+            motivos["negacao_explicita"] += 1
+        else:
+            motivos["outro"] += 1
+    for classe, quantidade in sorted(recursos_negados.items()):
+        print(f"recurso_ses_negado_{classe}={quantidade}")
+    for motivo, quantidade in sorted(motivos.items()):
+        print(f"motivo_iam_{motivo}={quantidade}")
 
 
 if __name__ == "__main__":
