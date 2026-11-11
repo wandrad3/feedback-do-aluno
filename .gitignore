@@ -10,5 +10,6 @@ __pycache__/
 .env
 manual-professores-privado*
 terraform/**/backend.hcl
+terraform/modules/plataforma/.terraform.lock.hcl
 terraform/**/terraform.tfvars
 ADJT - Fase 4 - Tech Challenge_rev.pdf

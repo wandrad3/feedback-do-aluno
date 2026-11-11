@@ -4,8 +4,10 @@ import collections
 import datetime as dt
 import json
 import os
+import pathlib
 import re
 import subprocess
+import tempfile
 import urllib.parse
 
 
@@ -63,7 +65,8 @@ def main():
                       for recurso in ([declaracao["Resource"]] if isinstance(declaracao["Resource"], str)
                                       else declaracao["Resource"])]
     identidade_atual = f"arn:aws:ses:{REGIAO}:{CONTA}:identity/{remetente}"
-    print(f"politica_envio_autoriza_remetente_atual={identidade_atual in recursos_envio or '*' in recursos_envio}")
+    identidade_curinga = f"arn:aws:ses:{REGIAO}:{CONTA}:identity/*"
+    print(f"politica_envio_autoriza_remetente_atual={identidade_atual in recursos_envio or identidade_curinga in recursos_envio or '*' in recursos_envio}")
 
     resposta = aws("dynamodb", "scan", "--table-name", "feedback-aluno-professores",
                    "--projection-expression", "email")
@@ -122,6 +125,22 @@ def main():
             linha = re.sub(r"https?://\S+", "[URL]", linha)
             print(f"amostra_acesso_negado={linha[:300]}")
             break
+    if os.getenv("TESTAR_ENVIO", "false").lower() == "true":
+        aviso = {"Records": [{"eventName": "INSERT", "dynamodb": {"NewImage": {
+            "descricao": {"S": "Teste tecnico de entrega de e-mail apos correcao IAM"},
+            "urgencia": {"S": "CRITICA"},
+            "enviadoEm": {"S": dt.datetime.now(dt.timezone.utc).isoformat()}
+        }}}]}
+        for funcao, evento in (("notificar", aviso), ("relatorio", {})):
+            destino = pathlib.Path(tempfile.gettempdir()) / f"feedback-{funcao}-resposta.json"
+            resultado = aws("lambda", "invoke", "--function-name", f"feedback-aluno-{funcao}",
+                            "--cli-binary-format", "raw-in-base64-out", "--payload",
+                            json.dumps(evento), str(destino))
+            if resultado.get("FunctionError") or resultado.get("StatusCode") != 200:
+                conteudo = json.loads(destino.read_text(encoding="utf-8"))
+                print(f"invocacao_{funcao}_erro_tipo={conteudo.get('errorType', 'desconhecido')}")
+                raise RuntimeError(f"Invocação de {funcao} falhou")
+            print(f"invocacao_{funcao}_ok=True")
 
 
 if __name__ == "__main__":

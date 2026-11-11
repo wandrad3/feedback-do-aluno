@@ -2,6 +2,12 @@ name: Diagnóstico de e-mail
 
 on:
   workflow_dispatch:
+    inputs:
+      testar_envio:
+        description: "Enviar um alerta de teste e um relatório para identidades verificadas"
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -19,4 +25,5 @@ jobs:
       - name: Verificar identidades SES e classes de erro
         env:
           EMAIL_ADMIN: ${{ secrets.EMAIL_ADMIN }}
+          TESTAR_ENVIO: ${{ inputs.testar_envio }}
         run: python3 scripts/diagnostico_email.py
