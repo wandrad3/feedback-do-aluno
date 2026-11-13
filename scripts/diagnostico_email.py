@@ -13,8 +13,8 @@ import urllib.parse
 
 REGIAO = "us-east-2"
 CONTA = "315205584370"
-INICIO = dt.datetime(2026, 11, 10, 23, 0, tzinfo=dt.timezone.utc)
-FIM = dt.datetime(2026, 11, 11, 0, 0, tzinfo=dt.timezone.utc)
+FIM = dt.datetime.now(dt.timezone.utc)
+INICIO = FIM - dt.timedelta(hours=48)
 
 
 def aws(*argumentos):
@@ -55,6 +55,8 @@ def main():
     remetente = os.environ["EMAIL_ADMIN"]
     print("conta_aws=correta")
     print(f"ses_production_access={aws('sesv2', 'get-account')['ProductionAccessEnabled']}")
+    conta_ses = aws("sesv2", "get-account")
+    print(f"ses_envios_24h={conta_ses['SendQuota']['SentLast24Hours']}")
     print(f"remetente_ses_verificado={identidade_verificada(remetente)}")
     politica = aws("iam", "get-role-policy", "--role-name", "feedback-aluno-notificar",
                    "--policy-name", "ler-stream-e-publicar")["PolicyDocument"]
@@ -74,6 +76,14 @@ def main():
     verificados = sum(identidade_verificada(endereco) for endereco in enderecos)
     print(f"professores_cadastrados={len(enderecos)}")
     print(f"professores_ses_verificados={verificados}")
+    suprimidos = 0
+    for endereco in enderecos:
+        try:
+            aws("sesv2", "get-suppressed-destination", "--email-address", endereco)
+            suprimidos += 1
+        except RuntimeError:
+            pass
+    print(f"professores_na_lista_supressao={suprimidos}")
 
     resposta = aws("logs", "filter-log-events", "--log-group-name",
                    "/aws/lambda/feedback-aluno-notificar",
@@ -82,6 +92,7 @@ def main():
     tipos = collections.Counter(filter(None, (tipo_erro(item.get("message", ""))
                                          for item in resposta.get("events", []))))
     print(f"eventos_cloudwatch={len(resposta.get('events', []))}")
+    print("janela_cloudwatch_horas=48")
     for tipo, quantidade in sorted(tipos.items()):
         print(f"erro_{tipo}={quantidade}")
     acoes = ("ses:SendEmail", "ses:GetEmailIdentity", "dynamodb:Scan",
@@ -125,6 +136,17 @@ def main():
             linha = re.sub(r"https?://\S+", "[URL]", linha)
             print(f"amostra_acesso_negado={linha[:300]}")
             break
+    for funcao in ("solicitar-relatorio", "relatorio"):
+        eventos = aws("logs", "filter-log-events", "--log-group-name",
+                      f"/aws/lambda/feedback-aluno-{funcao}",
+                      "--start-time", str(int(INICIO.timestamp() * 1000)),
+                      "--end-time", str(int(FIM.timestamp() * 1000)))["events"]
+        execucoes = sum(item.get("message", "").startswith("REPORT RequestId") for item in eventos)
+        erros = collections.Counter(filter(None, (tipo_erro(item.get("message", ""))
+                                                   for item in eventos)))
+        print(f"lambda_{funcao}_execucoes={execucoes}")
+        for tipo, quantidade in sorted(erros.items()):
+            print(f"lambda_{funcao}_erro_{tipo}={quantidade}")
     if os.getenv("TESTAR_ENVIO", "false").lower() == "true":
         aviso = {"Records": [{"eventName": "INSERT", "dynamodb": {"NewImage": {
             "descricao": {"S": "Teste tecnico de entrega de e-mail apos correcao IAM"},
