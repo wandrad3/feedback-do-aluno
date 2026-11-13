@@ -13,11 +13,13 @@ import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 import software.amazon.awssdk.services.sesv2.model.AlreadyExistsException;
 import software.amazon.awssdk.services.sesv2.model.CreateEmailIdentityRequest;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 public final class CadastrarEmail implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
     private static final Pattern EMAIL = Pattern.compile("^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    private static final Pattern NOME = Pattern.compile("^[\\p{L}][\\p{L}\\p{M} .'-]{0,79}$");
     private final DynamoDbClient dynamo;
     private final SesV2Client ses;
     private final String tabela;
@@ -47,13 +49,18 @@ public final class CadastrarEmail implements RequestHandler<APIGatewayV2HTTPEven
             String email = body.path("email").asText("").strip().toLowerCase(java.util.Locale.ROOT);
             if (email.length() > 254 || !EMAIL.matcher(email).matches())
                 return RespostaApi.criar(400, "{\"erro\":\"E-mail invalido\"}");
+            String nome = body.path("nome").asText("").strip().replaceAll("\\s+", " ");
+            if (!nome.isEmpty() && !NOME.matcher(nome).matches())
+                return RespostaApi.criar(400, "{\"erro\":\"Nome invalido\"}");
             try {
                 ses.createEmailIdentity(CreateEmailIdentityRequest.builder().emailIdentity(email).build());
             } catch (AlreadyExistsException ignorado) {
                 // Uma identidade já verificada pode ser reutilizada.
             }
-            dynamo.putItem(PutItemRequest.builder().tableName(tabela).item(Map.of(
-                    "professorId", AttributeValue.fromS(sub), "email", AttributeValue.fromS(email))).build());
+            Map<String, AttributeValue> item = new HashMap<>(Map.of(
+                    "professorId", AttributeValue.fromS(sub), "email", AttributeValue.fromS(email)));
+            if (!nome.isEmpty()) item.put("nome", AttributeValue.fromS(nome));
+            dynamo.putItem(PutItemRequest.builder().tableName(tabela).item(item).build());
             return RespostaApi.criar(202, "{\"mensagem\":\"Verifique seu e-mail e confirme o link enviado pela AWS para receber alertas\"}");
         } catch (com.fasterxml.jackson.core.JsonProcessingException | NullPointerException erro) {
             return RespostaApi.criar(400, "{\"erro\":\"JSON invalido\"}");

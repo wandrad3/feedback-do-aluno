@@ -49,10 +49,10 @@
     "/professores/email": {
       "post": {
         "summary": "Cadastrar o próprio e-mail para receber alertas e relatórios",
-        "description": "Exige usuário do grupo Professores. A AWS envia um link de verificação ao endereço informado; o envio começa após a confirmação.",
+        "description": "Exige usuário do grupo Professores. O nome é opcional e aparece na saudação dos e-mails. A AWS envia um link de verificação ao endereço informado; o envio começa após a confirmação.",
         "security": [{ "cognitoJwt": [] }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailProfessor" }, "example": { "email": "professor@exemplo.com" } } } },
-        "responses": { "202": { "description": "Cadastro recebido; confirmação do e-mail necessária" }, "400": { "description": "E-mail ou JSON inválido" }, "401": { "description": "Token ausente ou inválido" }, "403": { "description": "Usuário não pertence ao grupo Professores" } }
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailProfessor" }, "example": { "email": "professor@exemplo.com", "nome": "Ana Silva" } } } },
+        "responses": { "202": { "description": "Cadastro recebido; confirmação do e-mail necessária" }, "400": { "description": "E-mail, nome ou JSON inválido" }, "401": { "description": "Token ausente ou inválido" }, "403": { "description": "Usuário não pertence ao grupo Professores" } }
       },
       "delete": {
         "summary": "Remover o próprio e-mail da lista de envios",
@@ -63,9 +63,9 @@
     "/relatorio/solicitar": {
       "post": {
         "summary": "Solicitar envio do relatório da semana anterior",
-        "description": "Exige usuário do grupo Professores. O relatório é processado de forma assíncrona e enviado aos e-mails verificados.",
+        "description": "Exige usuário do grupo Professores com e-mail cadastrado e verificado no SES. O relatório da semana anterior é processado de forma assíncrona e enviado somente ao professor solicitante. HTTP 202 indica solicitação aceita, não entrega na caixa de entrada.",
         "security": [{ "cognitoJwt": [] }],
-        "responses": { "202": { "description": "Envio solicitado" }, "401": { "description": "Token ausente ou inválido" }, "403": { "description": "Usuário não pertence ao grupo Professores" } }
+        "responses": { "202": { "description": "Envio solicitado" }, "401": { "description": "Token ausente ou inválido" }, "403": { "description": "Usuário não pertence ao grupo Professores" }, "409": { "description": "Cadastre o e-mail ou confirme sua verificação no SES" } }
       }
     }
   },
@@ -99,7 +99,7 @@
       "EmailProfessor": {
         "type": "object",
         "required": ["email"],
-        "properties": { "email": { "type": "string", "format": "email", "maxLength": 254 } }
+        "properties": { "email": { "type": "string", "format": "email", "maxLength": 254 }, "nome": { "type": "string", "minLength": 1, "maxLength": 80, "description": "Opcional. Letras, espaços, ponto, apóstrofo ou hífen; aparece na saudação do e-mail." } }
       },
       "Erro": {
         "type": "object",

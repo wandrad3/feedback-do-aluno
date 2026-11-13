@@ -26,16 +26,16 @@ flowchart LR
   GitHub[GitHub Actions] -->|OIDC + Terraform| AWS[AWS us-east-2]
 ```
 
-As cinco funções Lambda seguem responsabilidades distintas. O registro usa a semana ISO como chave de partição e um UUID como chave de ordenação no DynamoDB. O relatório consulta apenas a partição da semana anterior e informa período, total, média, quantidade de avaliações críticas e normais, contagem em cada dia e distribuição das notas de 0 a 10. Cada avaliação inclui data e hora de São Paulo, nota, classificação e descrição. Mensagens grandes são divididas em partes identificadas, com o resumo repetido em cada parte. O aviso crítico inclui descrição, urgência e data de envio. Alertas e relatórios usam e-mail HTML em preto e branco da **FACULDADE DO ALUNO**, com versão em texto. Os alarmes de infraestrutura continuam no SNS.
+As cinco funções Lambda seguem responsabilidades distintas. O registro usa a semana ISO como chave de partição e um UUID como chave de ordenação no DynamoDB. O relatório consulta apenas a partição da semana anterior e informa período, total, média, quantidade de avaliações críticas e normais, contagem em cada dia e distribuição das notas de 0 a 10. O e-mail inclui tabelas de indicadores e avaliações, além de um gráfico de barras com o volume por dia, sem imagens externas ou JavaScript. Mensagens grandes são divididas em partes identificadas, com o resumo repetido em cada parte. O aviso crítico inclui uma tabela com descrição, urgência e data de envio. Alertas e relatórios usam HTML da **FACULDADE DO ALUNO**, com versão em texto. Os alarmes de infraestrutura continuam no SNS.
 
 ## API
 
 | Método | Rota | Autenticação | Corpo |
 | --- | --- | --- | --- |
 | POST | `/avaliacao` | Access token JWT do Cognito | `{"descricao":"texto","nota":0..10}` |
-| POST | `/professores/email` | JWT de usuário no grupo `Professores` | `{"email":"professor@exemplo.com"}` |
+| POST | `/professores/email` | JWT de usuário no grupo `Professores` | `{"email":"professor@exemplo.com","nome":"Ana Silva"}`; nome opcional |
 | DELETE | `/professores/email` | JWT de usuário no grupo `Professores` | Sem corpo; remove o próprio cadastro |
-| POST | `/relatorio/solicitar` | JWT de usuário no grupo `Professores` | Sem corpo; solicita o relatório da semana anterior |
+| POST | `/relatorio/solicitar` | JWT de usuário no grupo `Professores` | Sem corpo; valida o e-mail cadastrado e verificado e solicita o relatório da semana anterior somente para o professor autenticado. Retorna `409` se o cadastro ou a verificação estiver pendente. |
 | GET | `/openapi.json` | Pública | Especificação OpenAPI 3.0 em JSON |
 | GET | `/swagger-ui.html` | Pública | Documentação interativa Swagger UI |
 
@@ -120,7 +120,7 @@ No PowerShell, defina `$env:TF_VAR_email_admin` antes do comando `terraform plan
 
 O grupo Cognito `Professores` controla `POST /professores/email`, `DELETE /professores/email` e `POST /relatorio/solicitar`. O usuário `professor-demo` já foi incluído no grupo. Ele precisa entrar novamente para obter um token com o grupo atualizado.
 
-O remetente SES em `EMAIL_ADMIN` precisa estar verificado. A conta SES está em **sandbox**: cada professor cadastrado recebe um link de verificação da AWS; somente endereços verificados recebem os alertas e relatórios HTML. O e-mail usa a marca fictícia **FACULDADE DO ALUNO**, em preto e branco, e inclui versão em texto. O modelo escapa o conteúdo das avaliações antes de inseri-lo no HTML. O endpoint manual envia o relatório da **semana anterior**, igual ao agendamento automático.
+O remetente SES em `EMAIL_ADMIN` precisa estar verificado. A conta SES está em **sandbox**: cada professor cadastrado recebe um link de verificação da AWS; somente endereços verificados recebem os alertas e relatórios HTML. O nome opcional cadastrado personaliza a saudação com **Prezado, professor Ana Silva,**. O modelo escapa o conteúdo das avaliações antes de inseri-lo no HTML. O endpoint manual valida o cadastro e a verificação SES do usuário autenticado e envia o relatório da **semana anterior** apenas a ele; o agendamento automático continua enviando ao administrador e aos professores verificados. O `202` da rota manual confirma o início do processamento assíncrono, não a entrega ao destinatário.
 
 ## Usuário de demonstração
 

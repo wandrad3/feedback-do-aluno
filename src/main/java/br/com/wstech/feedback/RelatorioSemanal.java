@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 
 public final class RelatorioSemanal implements RequestHandler<Map<String, Object>, String> {
-    private static final int MAX_BYTES = 220_000;
+    private static final int MAX_BYTES = 150_000;
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"));
     private static final DateTimeFormatter DATA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"));
     private final DynamoDbClient dynamo;
@@ -75,7 +75,8 @@ public final class RelatorioSemanal implements RequestHandler<Map<String, Object
         for (int nota = 0; nota <= 10; nota++) resumo.append(nota).append("/10: ").append(porNota[nota]).append('\n');
         resumo.append("\nAvaliações recebidas:\n");
         if (avaliacoes.isEmpty()) resumo.append("Nenhuma avaliação recebida neste período.\n");
-        publicarPartes(semana, resumo.toString(), linhas);
+        String professorId = evento == null ? null : (String) evento.get("professorId");
+        publicarPartes(semana, resumo.toString(), linhas, avaliacoes, inicio, porDia, porNota, criticas, soma, professorId);
         return semana;
     }
 
@@ -93,21 +94,91 @@ public final class RelatorioSemanal implements RequestHandler<Map<String, Object
         return encontrados;
     }
 
-    private void publicarPartes(String semana, String resumo, List<String> linhas) {
-        List<String> partes = new ArrayList<>();
-        StringBuilder atual = new StringBuilder();
-        for (String linha : linhas) {
-            if (!atual.isEmpty() && (resumo.length() + atual.length() + linha.length() + 1) * 4 > MAX_BYTES) {
-                partes.add(atual.toString());
-                atual = new StringBuilder();
+    private void publicarPartes(String semana, String resumo, List<String> linhas, List<Feedback> avaliacoes,
+                                LocalDate inicio, Map<DayOfWeek, Integer> porDia, int[] porNota,
+                                int criticas, int soma, String professorId) {
+        List<List<Feedback>> partes = new ArrayList<>();
+        List<Feedback> atual = new ArrayList<>();
+        int tamanho = resumo.length();
+        for (int i = 0; i < linhas.size(); i++) {
+            if (!atual.isEmpty() && (tamanho + linhas.get(i).length() + 1) * 4 > MAX_BYTES) {
+                partes.add(atual);
+                atual = new ArrayList<>();
+                tamanho = resumo.length();
             }
-            atual.append(linha).append('\n');
+            atual.add(avaliacoes.get(i));
+            tamanho += linhas.get(i).length() + 1;
         }
-        partes.add(atual.toString());
+        partes.add(atual);
         for (int i = 0; i < partes.size(); i++) {
-            String mensagem = "Relatório %s - parte %d/%d%n%n%s%s".formatted(semana, i + 1, partes.size(), resumo, partes.get(i));
+            int inicioParte = partes.subList(0, i).stream().mapToInt(List::size).sum();
+            String detalhes = String.join("\n", linhas.subList(inicioParte, inicioParte + partes.get(i).size()));
+            String mensagem = "Relatório %s - parte %d/%d%n%n%s%s".formatted(semana, i + 1, partes.size(), resumo, detalhes);
+            String html = html(semana, inicio, avaliacoes.size(), soma, criticas, porDia, porNota,
+                    partes.get(i), i + 1, partes.size());
             email.enviar("FACULDADE DO ALUNO | Relatório semanal de avaliações",
-                    "Relatório semanal de avaliações", "Prezada equipe,\n\nSegue o consolidado das avaliações da semana anterior.\n\n" + mensagem);
+                    "Relatório semanal de avaliações", "Segue o consolidado das avaliações da semana anterior.\n\n" + mensagem,
+                    html, professorId);
         }
+    }
+
+    private static String html(String semana, LocalDate inicio, int total, int soma, int criticas,
+                               Map<DayOfWeek, Integer> porDia, int[] porNota, List<Feedback> detalhes,
+                               int parte, int totalPartes) {
+        StringBuilder html = new StringBuilder("<p>Segue o consolidado das avaliações da semana anterior.</p>");
+        html.append("<p><strong>Período:</strong> ").append(DATA.format(inicio)).append(" a ")
+                .append(DATA.format(inicio.plusDays(6))).append(" (São Paulo) · <strong>Semana ISO:</strong> ")
+                .append(semana).append(" · Parte ").append(parte).append('/').append(totalPartes).append("</p>");
+        html.append("<table role=\"presentation\" style=\"border-collapse:collapse;width:100%;font-size:14px\">"
+                + "<tr><th align=\"left\" style=\"padding:9px;background:#172033;color:#fff\">Indicador</th>"
+                + "<th align=\"right\" style=\"padding:9px;background:#172033;color:#fff\">Valor</th></tr>");
+        linha(html, "Total de avaliações", Integer.toString(total));
+        linha(html, "Média das notas", String.format(Locale.forLanguageTag("pt-BR"), "%.2f/10", total == 0 ? 0.0 : (double) soma / total));
+        linha(html, "Críticas (0 a 3)", Integer.toString(criticas));
+        linha(html, "Normais (4 a 10)", Integer.toString(total - criticas));
+        html.append("</table><h2 style=\"font-size:18px;margin-top:28px\">Avaliações por dia</h2>");
+        html.append("<table role=\"presentation\" style=\"width:100%;border-collapse:collapse;font-size:13px\">"
+                + "<tr><th align=\"left\">Dia</th><th align=\"left\">Volume</th><th align=\"right\">Total</th></tr>");
+        int maximo = Math.max(1, porDia.values().stream().mapToInt(Integer::intValue).max().orElse(0));
+        for (int dia = 0; dia < 7; dia++) {
+            LocalDate data = inicio.plusDays(dia);
+            int valor = porDia.getOrDefault(data.getDayOfWeek(), 0);
+            int largura = valor == 0 ? 0 : Math.max(4, valor * 100 / maximo);
+            html.append("<tr><td style=\"padding:8px 6px;border-bottom:1px solid #ddd\">")
+                    .append(DATA.format(data)).append("</td><td style=\"width:65%;border-bottom:1px solid #ddd\">"
+                            + "<table role=\"presentation\" style=\"width:").append(largura)
+                    .append("%;background:#2463a6\"><tr><td style=\"height:12px;font-size:1px\">&nbsp;</td></tr></table></td>"
+                            + "<td align=\"right\" style=\"padding:8px 6px;border-bottom:1px solid #ddd\">")
+                    .append(valor).append("</td></tr>");
+        }
+        html.append("</table><h2 style=\"font-size:18px;margin-top:28px\">Distribuição das notas</h2>"
+                + "<table role=\"presentation\" style=\"width:100%;border-collapse:collapse;font-size:13px\">"
+                + "<tr><th align=\"left\">Nota</th><th align=\"right\">Quantidade</th></tr>");
+        for (int nota = 0; nota <= 10; nota++) linha(html, nota + "/10", Integer.toString(porNota[nota]));
+        html.append("</table><h2 style=\"font-size:18px;margin-top:28px\">Avaliações recebidas</h2>");
+        if (detalhes.isEmpty()) html.append("<p>Nenhuma avaliação recebida neste período.</p>");
+        else {
+            html.append("<table role=\"presentation\" style=\"width:100%;border-collapse:collapse;font-size:13px\">"
+                    + "<tr><th align=\"left\">Data e hora</th><th align=\"left\">Nota</th>"
+                    + "<th align=\"left\">Classificação</th><th align=\"left\">Avaliação</th></tr>");
+            for (Feedback feedback : detalhes) {
+                html.append("<tr><td style=\"padding:8px;border-bottom:1px solid #ddd\">")
+                        .append(DATA_HORA.format(feedback.enviadoEm().atZone(Feedback.ZONE)))
+                        .append("</td><td style=\"padding:8px;border-bottom:1px solid #ddd\">")
+                        .append(feedback.nota()).append("/10</td><td style=\"padding:8px;border-bottom:1px solid #ddd\">")
+                        .append(EmailCorporativo.escapar(feedback.urgencia()))
+                        .append("</td><td style=\"padding:8px;border-bottom:1px solid #ddd;overflow-wrap:anywhere\">")
+                        .append(EmailCorporativo.escapar(feedback.descricao())).append("</td></tr>");
+            }
+            html.append("</table>");
+        }
+        return html.toString();
+    }
+
+    private static void linha(StringBuilder html, String titulo, String valor) {
+        html.append("<tr><td style=\"padding:9px;border-bottom:1px solid #ddd\">")
+                .append(EmailCorporativo.escapar(titulo))
+                .append("</td><td align=\"right\" style=\"padding:9px;border-bottom:1px solid #ddd\">")
+                .append(EmailCorporativo.escapar(valor)).append("</td></tr>");
     }
 }

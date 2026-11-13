@@ -27,7 +27,9 @@ class NotificarUrgenciaTest {
         event.setRecords(List.of(registro("MODIFY", "CRITICA"), registro("INSERT", "NORMAL"), registro("INSERT", "CRITICA")));
         assertEquals("1", new NotificarUrgencia(email).handleRequest(event, null));
         var captor = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(email).enviar(anyString(), anyString(), captor.capture());
+        var html = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(email).enviar(anyString(), anyString(), captor.capture(), html.capture());
         assertTrue(captor.getValue().contains("aula ruim"));
+        assertTrue(html.getValue().contains("<table"));
     }
 }

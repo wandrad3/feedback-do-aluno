@@ -24,10 +24,14 @@ class RelatorioSemanalTest {
         when(dynamo.query(any(QueryRequest.class))).thenReturn(QueryResponse.builder().items(List.of()).lastEvaluatedKey(Map.of()).build());
         assertEquals("2026-W45", handler.handleRequest(Map.of(), null));
         var captor = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(email).enviar(anyString(), anyString(), captor.capture());
+        var html = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(email).enviar(anyString(), anyString(), captor.capture(), html.capture(), isNull());
         assertTrue(captor.getValue().contains("Média das notas: 0,00/10"));
         assertTrue(captor.getValue().contains("Nenhuma avaliação recebida"));
         assertTrue(captor.getValue().contains("02/11/2026 a 08/11/2026"));
+        assertTrue(html.getValue().contains("Nenhuma avaliação recebida"));
+        assertTrue(html.getValue().contains("<table"));
+        assertEquals("2026-W45", handler.handleRequest(null, null));
     }
 
     @Test void paginaECalcula() {
@@ -39,7 +43,8 @@ class RelatorioSemanalTest {
         assertEquals("2026-W45", handler.handleRequest(Map.of(), null));
         verify(dynamo, times(2)).query(any(QueryRequest.class));
         var captor = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(email).enviar(anyString(), anyString(), captor.capture());
+        var html = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(email).enviar(anyString(), anyString(), captor.capture(), html.capture(), isNull());
         assertTrue(captor.getValue().contains("Média das notas: 5,00/10"));
         assertTrue(captor.getValue().contains("Avaliações críticas (0 a 3): 1"));
         assertTrue(captor.getValue().contains("Avaliações normais (4 a 10): 1"));
@@ -50,6 +55,8 @@ class RelatorioSemanalTest {
         assertTrue(captor.getValue().contains("02/11/2026: 0"));
         assertTrue(captor.getValue().contains("bom"));
         assertTrue(captor.getValue().contains("ruim"));
+        assertTrue(html.getValue().contains("width:100%;border-collapse:collapse"));
+        assertTrue(html.getValue().contains("bom"));
     }
 
     @Test void divideMensagemLonga() {
@@ -58,6 +65,16 @@ class RelatorioSemanalTest {
                 .mapToObj(i -> Feedback.criar(Integer.toString(i), longa, 2, Instant.parse("2026-11-03T12:00:00Z")).atributos()).toList();
         when(dynamo.query(any(QueryRequest.class))).thenReturn(QueryResponse.builder().items(itens).build());
         handler.handleRequest(Map.of(), null);
-        verify(email, atLeast(2)).enviar(anyString(), anyString(), anyString());
+        verify(email, atLeast(2)).enviar(anyString(), anyString(), anyString(), anyString(), isNull());
+    }
+
+    @Test void enviaRelatorioManualSomenteAoSolicitanteComHtmlEscapado() {
+        Feedback item = Feedback.criar("1", "<script>alert('x')</script>", 4, Instant.parse("2026-11-03T12:00:00Z"));
+        when(dynamo.query(any(QueryRequest.class))).thenReturn(QueryResponse.builder().items(item.atributos()).build());
+        handler.handleRequest(Map.of("professorId", "abc"), null);
+        var html = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(email).enviar(anyString(), anyString(), anyString(), html.capture(), eq("abc"));
+        assertTrue(html.getValue().contains("&lt;script&gt;"));
+        assertFalse(html.getValue().contains("<script>"));
     }
 }

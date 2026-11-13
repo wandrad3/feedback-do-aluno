@@ -26,10 +26,18 @@ public final class NotificarUrgencia implements RequestHandler<DynamodbEvent, St
             if (!"INSERT".equals(registro.getEventName())
                     || !"CRITICA".equals(registro.getDynamodb().getNewImage().get("urgencia").getS())) continue;
             Map<String, com.amazonaws.services.lambda.runtime.events.models.dynamodb.AttributeValue> imagem = registro.getDynamodb().getNewImage();
+            String descricao = imagem.get("descricao").getS();
+            String urgencia = imagem.get("urgencia").getS();
+            String data = imagem.get("enviadoEm").getS();
+            String html = "<p>Uma avaliação de aula requer atenção.</p>"
+                    + "<table role=\"presentation\" style=\"border-collapse:collapse;width:100%;font-size:14px\">"
+                    + "<tr><th align=\"left\" style=\"padding:10px;background:#f2f4f7\">Campo</th><th align=\"left\" style=\"padding:10px;background:#f2f4f7\">Informação</th></tr>"
+                    + "<tr><td style=\"padding:10px;border-bottom:1px solid #ddd\">Descrição</td><td style=\"padding:10px;border-bottom:1px solid #ddd\">" + EmailCorporativo.escapar(descricao) + "</td></tr>"
+                    + "<tr><td style=\"padding:10px;border-bottom:1px solid #ddd\">Urgência</td><td style=\"padding:10px;border-bottom:1px solid #ddd\">" + EmailCorporativo.escapar(urgencia) + "</td></tr>"
+                    + "<tr><td style=\"padding:10px;border-bottom:1px solid #ddd\">Data de envio</td><td style=\"padding:10px;border-bottom:1px solid #ddd\">" + EmailCorporativo.escapar(data) + "</td></tr></table>";
             email.enviar("FACULDADE DO ALUNO | Avaliação crítica recebida", "Atenção: avaliação crítica",
-                    "Prezada equipe,\n\nUma avaliação de aula requer atenção.\n\nDescrição: %s\nUrgência: %s\nData de envio: %s"
-                            .formatted(imagem.get("descricao").getS(), imagem.get("urgencia").getS(),
-                                    imagem.get("enviadoEm").getS()));
+                    "Uma avaliação de aula requer atenção.\n\nDescrição: %s\nUrgência: %s\nData de envio: %s"
+                            .formatted(descricao, urgencia, data), html);
             enviadas++;
         }
         return Integer.toString(enviadas);

@@ -11,6 +11,7 @@
     { "key": "usuario", "value": "" },
     { "key": "senha", "value": "" },
     { "key": "email_professor", "value": "" },
+    { "key": "nome_professor", "value": "" },
     { "key": "access_token", "value": "" }
   ],
   "item": [
@@ -112,10 +113,10 @@
       "name": "07 - Cadastrar e-mail do professor",
       "request": {
         "method": "POST",
-        "description": "Exige usuário do grupo Professores. Preencha email_professor com um endereço que você controla e confirme o link enviado pelo SES. Em sandbox, só endereços verificados recebem alertas e relatórios.",
+        "description": "Exige usuário do grupo Professores. Preencha email_professor e, opcionalmente, nome_professor. Confirme o link enviado pelo SES. Em sandbox, só endereços verificados recebem alertas e relatórios.",
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\"email\":\"{{email_professor}}\"}" },
+        "body": { "mode": "raw", "raw": "{\"email\":\"{{email_professor}}\",\"nome\":\"{{nome_professor}}\"}" },
         "url": "{{base_url}}/professores/email"
       },
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -127,13 +128,13 @@
       "name": "08 - Solicitar relatório semanal",
       "request": {
         "method": "POST",
-        "description": "Exige usuário do grupo Professores. Solicita de forma assíncrona o relatório da semana ISO anterior, no horário de São Paulo. O e-mail FACULDADE DO ALUNO informa período, total, média, críticas e normais, volume por dia e por nota e detalhes de cada avaliação. A resposta 202 confirma a solicitação; confira o recebimento no endereço SES verificado.",
+        "description": "Exige usuário do grupo Professores com e-mail cadastrado e verificado. Solicita de forma assíncrona o relatório da semana ISO anterior para o próprio professor. O HTML inclui indicadores, tabelas, gráfico de barras por dia e avaliações. HTTP 409 orienta cadastro ou confirmação; HTTP 202 confirma processamento, não entrega na caixa de entrada.",
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
         "url": "{{base_url}}/relatorio/solicitar"
       },
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-        "pm.test('Envio solicitado HTTP 202', function () { pm.response.to.have.status(202); });",
-        "pm.test('Processamento assíncrono informado', function () { pm.expect(pm.response.json().mensagem).to.include('em processamento'); });"
+        "pm.test('Solicitação aceita ou cadastro pendente', function () { pm.expect([202, 409]).to.include(pm.response.code); });",
+        "pm.test('Resposta orienta o professor', function () { const body = pm.response.json(); if (pm.response.code === 202) pm.expect(body.mensagem).to.include('em processamento'); else pm.expect(body.erro).to.be.a('string').and.not.empty; });"
       ] } }]
     },
     {

@@ -123,7 +123,7 @@ resource "aws_iam_role_policy" "relatorio" {
   role = aws_iam_role.lambda["relatorio"].id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["dynamodb:Query"], Resource = aws_dynamodb_table.avaliacoes.arn },
-    { Effect = "Allow", Action = ["dynamodb:Scan"], Resource = aws_dynamodb_table.professores.arn },
+    { Effect = "Allow", Action = ["dynamodb:Scan", "dynamodb:GetItem"], Resource = aws_dynamodb_table.professores.arn },
     { Effect = "Allow", Action = ["ses:SendEmail"], Resource = local.identidades_ses,
     Condition = { StringEquals = { "ses:FromAddress" = var.email_admin } } },
     { Effect = "Allow", Action = ["ses:GetEmailIdentity"], Resource = "*" }
@@ -143,7 +143,9 @@ resource "aws_iam_role_policy" "solicitar_relatorio" {
   name = "invocar-relatorio"
   role = aws_iam_role.lambda["solicitar-relatorio"].id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = aws_lambda_function.funcao["relatorio"].arn }
+    { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = aws_lambda_function.funcao["relatorio"].arn },
+    { Effect = "Allow", Action = ["dynamodb:GetItem"], Resource = aws_dynamodb_table.professores.arn },
+    { Effect = "Allow", Action = ["ses:GetEmailIdentity"], Resource = "*" }
   ] })
 }
 
