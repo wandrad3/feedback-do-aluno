@@ -88,8 +88,10 @@ jobs:
       - name: Aplicar infraestrutura e funções
         env:
           TF_VAR_email_admin: ${{ secrets.EMAIL_ADMIN }}
+          TF_VAR_email_admin_adicional: ${{ secrets.EMAIL_ADMIN_ADICIONAL }}
+          TF_VAR_nome_admin_adicional: ${{ secrets.NOME_ADMIN_ADICIONAL }}
         run: |
-          test -n "$TF_VAR_email_admin" || { echo 'EMAIL_ADMIN não configurado'; exit 1; }
+          test -n "$TF_VAR_email_admin" && test -n "$TF_VAR_email_admin_adicional" && test -n "$TF_VAR_nome_admin_adicional" || { echo 'E-mails administrativos não configurados'; exit 1; }
           terraform -chdir=terraform/app init -backend-config="bucket=feedback-aluno-tfstate-315205584370" -backend-config="region=us-east-2"
           terraform -chdir=terraform/app apply -auto-approve
           terraform -chdir=terraform/app output
@@ -115,9 +117,11 @@ jobs:
       - name: Destruir aplicação
         env:
           TF_VAR_email_admin: ${{ secrets.EMAIL_ADMIN }}
+          TF_VAR_email_admin_adicional: ${{ secrets.EMAIL_ADMIN_ADICIONAL }}
+          TF_VAR_nome_admin_adicional: ${{ secrets.NOME_ADMIN_ADICIONAL }}
         run: |
           test "$(aws sts get-caller-identity --query Account --output text)" = "315205584370"
-          test -n "$TF_VAR_email_admin"
+          test -n "$TF_VAR_email_admin" && test -n "$TF_VAR_email_admin_adicional" && test -n "$TF_VAR_nome_admin_adicional"
           terraform -chdir=terraform/app init -backend-config="bucket=feedback-aluno-tfstate-315205584370" -backend-config="region=us-east-2"
           terraform -chdir=terraform/app destroy -auto-approve
       - name: Remover bootstrap exclusivo do projeto

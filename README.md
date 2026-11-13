@@ -86,11 +86,13 @@ Configure o novo repositório no GitHub. Informe o token sem colocá-lo em hist�
 ```bash
 gh secret set SONAR_TOKEN -R wandrad3/feedback-do-aluno
 gh secret set EMAIL_ADMIN -R wandrad3/feedback-do-aluno
+gh secret set EMAIL_ADMIN_ADICIONAL -R wandrad3/feedback-do-aluno
+gh secret set NOME_ADMIN_ADICIONAL -R wandrad3/feedback-do-aluno
 gh variable set SONAR_ORGANIZATION -R wandrad3/feedback-do-aluno --body 'wandrad3profile-projects'
 gh variable set SONAR_PROJECT_KEY -R wandrad3/feedback-do-aluno --body 'wandrad3profile-projects_wandrad3-feedback-do-aluno'
 ```
 
-As duas variables Sonar e os secrets `SONAR_TOKEN` e `EMAIL_ADMIN` já estão cadastrados no GitHub. O projeto público foi criado manualmente e ainda não está vinculado ao repositório. Conecte a organização Sonar ao GitHub e associe o projeto a `wandrad3/feedback-do-aluno` em **Administration → General Settings → Repository binding**. O workflow em `.github/workflows/ci.yml` testa PRs e, após um merge em `main`, executa testes, cobertura, Sonar, validação Terraform e `terraform apply`. A autenticação GitHub → AWS usa OIDC; nenhuma chave de acesso AWS fica no GitHub ou no código. A saída do Terraform mostra URL da API, ID do cliente Cognito e ID do User Pool.
+As duas variables Sonar e os secrets `SONAR_TOKEN`, `EMAIL_ADMIN`, `EMAIL_ADMIN_ADICIONAL` e `NOME_ADMIN_ADICIONAL` estão cadastrados no GitHub. O projeto público foi criado manualmente e ainda não está vinculado ao repositório. Conecte a organização Sonar ao GitHub e associe o projeto a `wandrad3/feedback-do-aluno` em **Administration → General Settings → Repository binding**. O workflow em `.github/workflows/ci.yml` testa PRs e, após um merge em `main`, executa testes, cobertura, Sonar, validação Terraform e `terraform apply`. A autenticação GitHub → AWS usa OIDC; nenhuma chave de acesso AWS fica no GitHub ou no código. A saída do Terraform mostra URL da API, ID do cliente Cognito e ID do User Pool.
 
 ### Implantação atual
 
@@ -102,19 +104,19 @@ O deploy da versão com cadastro de professores e e-mails HTML na conta **315205
 | ID do cliente Cognito | `7l8o6012lm01h37ositatnsn36` |
 | ID do User Pool | `us-east-2_N2DycwX8K` |
 
-O endereço administrativo é configurado no secret `EMAIL_ADMIN`; sua identidade SES deve estar **verificada** e a assinatura SNS para alarmes técnicos deve estar **confirmada**. A avaliação crítica fictícia acionou a Lambda de notificação, e a solicitação manual executou a Lambda de relatório. Os logs dessas funções não registraram erros no teste anterior, e a cota SES registrou envios. Confirme o recebimento na caixa de entrada após cada troca de endereço. O SNS não é usado para alertas de avaliações nem relatórios.
+O remetente e administrador principal são configurados no secret `EMAIL_ADMIN`. Um administrador adicional recebe alertas e relatórios automáticos por meio dos secrets `EMAIL_ADMIN_ADICIONAL` e `NOME_ADMIN_ADICIONAL`; seu nome aparece na saudação. Ambos os endereços precisam estar **verificados no SES** e as respectivas assinaturas SNS para alarmes técnicos devem estar **confirmadas**. A avaliação crítica fictícia acionou a Lambda de notificação, e a solicitação manual executou a Lambda de relatório. Os logs dessas funções não registraram erros no teste anterior, e a cota SES registrou envios. Confirme o recebimento na caixa de entrada após cada inclusão ou troca de endereço. O SNS não é usado para alertas de avaliações nem relatórios.
 
-Se o endereço do administrador mudar, verifique a nova identidade no SES, atualize o secret `EMAIL_ADMIN` e acione o deploy com um push à `main`. Se a identidade já tiver sido criada fora do Terraform para receber o link de verificação, importe-a para o estado antes do deploy. O Terraform substituirá a assinatura SNS; o novo destinatário precisará confirmar a mensagem do SNS para os alarmes técnicos. Não publique o endereço no repositório.
+Se o endereço do administrador principal mudar, verifique a nova identidade no SES, atualize o secret `EMAIL_ADMIN` e acione o deploy com um push à `main`. Para incluir ou trocar o administrador adicional, atualize os secrets `EMAIL_ADMIN_ADICIONAL` e `NOME_ADMIN_ADICIONAL`. Se a identidade já tiver sido criada fora do Terraform para receber o link de verificação, importe-a para o estado antes do deploy. Cada novo destinatário precisa confirmar o link SES e a assinatura SNS, enviados separadamente pela AWS. Não publique os endereços no repositório.
 
 Para testar localmente um `plan` com o perfil correto:
 
 ```bash
 cd terraform/app
 terraform init -backend-config="bucket=feedback-aluno-tfstate-315205584370" -backend-config="region=us-east-2"
-TF_VAR_email_admin='<EMAIL>' terraform plan
+TF_VAR_email_admin='<EMAIL_PRINCIPAL>' TF_VAR_email_admin_adicional='<EMAIL_ADICIONAL>' TF_VAR_nome_admin_adicional='<NOME_ADICIONAL>' terraform plan
 ```
 
-No PowerShell, defina `$env:TF_VAR_email_admin` antes do comando `terraform plan`. O e-mail fica no estado remoto criptografado e não deve ser incluído em `terraform.tfvars` versionado.
+No PowerShell, defina as três variáveis `TF_VAR_email_admin`, `TF_VAR_email_admin_adicional` e `TF_VAR_nome_admin_adicional` antes do comando `terraform plan`. Os endereços ficam no estado remoto criptografado e não devem ser incluídos em `terraform.tfvars` versionado.
 
 ## Professores, SES e envio sob demanda
 

@@ -33,7 +33,8 @@ public final class RelatorioSemanal implements RequestHandler<Map<String, Object
 
     RelatorioSemanal(DynamoDbClient dynamo, SesV2Client ses, String tabela, String tabelaProfessores,
                      String emailAdmin, Clock clock) {
-        this(dynamo, new EmailCorporativo(dynamo, ses, tabelaProfessores, emailAdmin), tabela, clock);
+        this(dynamo, new EmailCorporativo(dynamo, ses, tabelaProfessores, emailAdmin,
+                System.getenv("EMAIL_ADMIN_ADICIONAL"), System.getenv("NOME_ADMIN_ADICIONAL")), tabela, clock);
     }
 
     RelatorioSemanal(DynamoDbClient dynamo, EmailCorporativo email, String tabela, Clock clock) {

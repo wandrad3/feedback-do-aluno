@@ -18,18 +18,27 @@ import software.amazon.awssdk.services.sesv2.model.Message;
 import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
 
 class EmailCorporativo {
-    private record Destinatario(String endereco, String nome) {}
+    private record Destinatario(String endereco, String nome, boolean professor) {}
 
     private final DynamoDbClient dynamo;
     private final SesV2Client ses;
     private final String tabela;
     private final String remetente;
+    private final String adminAdicional;
+    private final String nomeAdminAdicional;
 
     EmailCorporativo(DynamoDbClient dynamo, SesV2Client ses, String tabela, String remetente) {
+        this(dynamo, ses, tabela, remetente, "", "");
+    }
+
+    EmailCorporativo(DynamoDbClient dynamo, SesV2Client ses, String tabela, String remetente,
+                     String adminAdicional, String nomeAdminAdicional) {
         this.dynamo = dynamo;
         this.ses = ses;
         this.tabela = tabela;
         this.remetente = remetente;
+        this.adminAdicional = adminAdicional;
+        this.nomeAdminAdicional = nomeAdminAdicional;
     }
 
     void enviar(String assunto, String titulo, String texto, String html) {
@@ -43,7 +52,9 @@ class EmailCorporativo {
                 if (professorId != null) throw new IllegalStateException("Destinatario SES nao verificado");
                 continue;
             }
-            String saudacao = destino.nome().isBlank() ? "Prezada equipe," : "Prezado, professor " + destino.nome() + ",";
+            String saudacao = destino.nome().isBlank() ? "Prezada equipe,"
+                    : destino.professor() ? "Prezado, professor " + destino.nome() + ","
+                    : "Prezado, " + destino.nome() + ",";
             ses.sendEmail(SendEmailRequest.builder().fromEmailAddress(remetente)
                     .destination(Destination.builder().toAddresses(destino.endereco()).build())
                     .content(EmailContent.builder().simple(Message.builder()
@@ -68,12 +79,15 @@ class EmailCorporativo {
             return List.of(deItem(item));
         }
         List<Destinatario> emails = new ArrayList<>();
-        emails.add(new Destinatario(remetente, ""));
+        emails.add(new Destinatario(remetente, "", false));
+        if (!adminAdicional.isBlank() && !adminAdicional.equalsIgnoreCase(remetente))
+            emails.add(new Destinatario(adminAdicional, nomeAdminAdicional, false));
         Map<String, AttributeValue> cursor = null;
         do {
             ScanResponse pagina = dynamo.scan(ScanRequest.builder().tableName(tabela)
                     .exclusiveStartKey(cursor).build());
-            pagina.items().stream().filter(item -> !item.get("email").s().equalsIgnoreCase(remetente))
+            pagina.items().stream().filter(item -> !item.get("email").s().equalsIgnoreCase(remetente)
+                            && !item.get("email").s().equalsIgnoreCase(adminAdicional))
                     .map(EmailCorporativo::deItem).forEach(emails::add);
             cursor = pagina.lastEvaluatedKey();
         } while (!cursor.isEmpty());
@@ -82,7 +96,7 @@ class EmailCorporativo {
 
     private static Destinatario deItem(Map<String, AttributeValue> item) {
         AttributeValue nome = item.get("nome");
-        return new Destinatario(item.get("email").s(), nome == null ? "" : nome.s());
+        return new Destinatario(item.get("email").s(), nome == null ? "" : nome.s(), true);
     }
 
     static String pagina(String titulo, String saudacao, String corpoHtml) {

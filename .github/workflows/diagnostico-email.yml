@@ -25,5 +25,6 @@ jobs:
       - name: Verificar identidades SES e classes de erro
         env:
           EMAIL_ADMIN: ${{ secrets.EMAIL_ADMIN }}
+          EMAIL_ADMIN_ADICIONAL: ${{ secrets.EMAIL_ADMIN_ADICIONAL }}
           TESTAR_ENVIO: ${{ inputs.testar_envio }}
         run: python3 scripts/diagnostico_email.py

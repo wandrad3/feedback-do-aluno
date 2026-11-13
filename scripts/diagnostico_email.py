@@ -58,6 +58,12 @@ def main():
     conta_ses = aws("sesv2", "get-account")
     print(f"ses_envios_24h={conta_ses['SendQuota']['SentLast24Hours']}")
     print(f"remetente_ses_verificado={identidade_verificada(remetente)}")
+    admin_adicional = os.getenv("EMAIL_ADMIN_ADICIONAL", "")
+    if admin_adicional:
+        print(f"admin_adicional_ses_verificado={identidade_verificada(admin_adicional)}")
+        inscricoes = aws("sns", "list-subscriptions-by-topic", "--topic-arn",
+                         f"arn:aws:sns:{REGIAO}:{CONTA}:feedback-aluno-notificacoes")["Subscriptions"]
+        print(f"admin_adicional_sns_confirmado={any(item['Endpoint'] == admin_adicional and item['SubscriptionArn'] != 'PendingConfirmation' for item in inscricoes)}")
     politica = aws("iam", "get-role-policy", "--role-name", "feedback-aluno-notificar",
                    "--policy-name", "ler-stream-e-publicar")["PolicyDocument"]
     if isinstance(politica, str):

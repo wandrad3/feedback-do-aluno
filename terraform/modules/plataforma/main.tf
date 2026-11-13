@@ -47,6 +47,10 @@ resource "aws_sesv2_email_identity" "admin" {
   email_identity = var.email_admin
 }
 
+resource "aws_sesv2_email_identity" "admin_adicional" {
+  email_identity = var.email_admin_adicional
+}
+
 resource "aws_sns_topic" "notificacoes" {
   name = "${var.nome}-notificacoes"
   tags = local.tags
@@ -56,6 +60,12 @@ resource "aws_sns_topic_subscription" "admin" {
   topic_arn = aws_sns_topic.notificacoes.arn
   protocol  = "email"
   endpoint  = var.email_admin
+}
+
+resource "aws_sns_topic_subscription" "admin_adicional" {
+  topic_arn = aws_sns_topic.notificacoes.arn
+  protocol  = "email"
+  endpoint  = var.email_admin_adicional
 }
 
 resource "aws_cognito_user_pool" "alunos" {
@@ -180,6 +190,8 @@ resource "aws_lambda_function" "funcao" {
       TABELA_PROFESSORES  = aws_dynamodb_table.professores.name
       TOPICO_NOTIFICACOES = aws_sns_topic.notificacoes.arn
       EMAIL_ADMIN         = var.email_admin
+      EMAIL_ADMIN_ADICIONAL = var.email_admin_adicional
+      NOME_ADMIN_ADICIONAL = var.nome_admin_adicional
       FUNCAO_RELATORIO    = "${var.nome}-relatorio"
     }
   }

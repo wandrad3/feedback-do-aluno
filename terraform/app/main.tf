@@ -11,17 +11,21 @@ terraform {
 provider "aws" { region = "us-east-2" }
 
 variable "email_admin" { type = string }
+variable "email_admin_adicional" { type = string }
+variable "nome_admin_adicional" { type = string }
 variable "artefato_jar" {
   type    = string
   default = "../../target/feedback-do-aluno.jar"
 }
 
 module "plataforma" {
-  source       = "../modules/plataforma"
-  nome         = "feedback-aluno"
-  regiao       = "us-east-2"
-  email_admin  = var.email_admin
-  artefato_jar = var.artefato_jar
+  source                = "../modules/plataforma"
+  nome                  = "feedback-aluno"
+  regiao                = "us-east-2"
+  email_admin           = var.email_admin
+  email_admin_adicional = var.email_admin_adicional
+  nome_admin_adicional  = var.nome_admin_adicional
+  artefato_jar          = var.artefato_jar
 }
 
 output "api_url" { value = module.plataforma.api_url }

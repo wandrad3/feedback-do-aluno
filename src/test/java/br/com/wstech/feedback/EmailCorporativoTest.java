@@ -55,6 +55,27 @@ class EmailCorporativoTest {
         verifyNoInteractions(dynamo);
     }
 
+    @Test void incluiAdministradorAdicionalSemDuplicarProfessor() {
+        DynamoDbClient dynamo = mock(DynamoDbClient.class);
+        SesV2Client ses = mock(SesV2Client.class);
+        when(dynamo.scan(any(ScanRequest.class))).thenReturn(ScanResponse.builder().items(
+                Map.of("email", AttributeValue.fromS("segundo@example.com")),
+                Map.of("email", AttributeValue.fromS("prof@example.com"))).build());
+        when(ses.getEmailIdentity(any(GetEmailIdentityRequest.class)))
+                .thenReturn(GetEmailIdentityResponse.builder().verifiedForSendingStatus(true).build());
+        new EmailCorporativo(dynamo, ses, "professores", "admin@example.com", "segundo@example.com", "Nome Admin")
+                .enviar("Aviso", "Alerta", "Corpo", "<p>Corpo</p>");
+        var captor = org.mockito.ArgumentCaptor.forClass(SendEmailRequest.class);
+        verify(ses, times(3)).sendEmail(captor.capture());
+        assertEquals(List.of("admin@example.com"), captor.getAllValues().get(0).destination().toAddresses());
+        assertEquals(List.of("segundo@example.com"), captor.getAllValues().get(1).destination().toAddresses());
+        assertTrue(captor.getAllValues().get(1).content().simple().body().text().data()
+                .startsWith("Prezado, Nome Admin,"));
+        assertEquals(List.of("prof@example.com"), captor.getAllValues().get(2).destination().toAddresses());
+        new EmailCorporativo(dynamo, ses, "professores", "admin@example.com", "ADMIN@example.com", "Mesmo")
+                .enviar("Aviso", "Alerta", "Corpo", "<p>Corpo</p>");
+    }
+
     @Test void enviaApenasAoProfessorSolicitante() {
         DynamoDbClient dynamo = mock(DynamoDbClient.class);
         SesV2Client ses = mock(SesV2Client.class);

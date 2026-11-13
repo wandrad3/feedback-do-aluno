@@ -12,7 +12,8 @@ public final class NotificarUrgencia implements RequestHandler<DynamodbEvent, St
 
     public NotificarUrgencia() {
         this(new EmailCorporativo(DynamoDbClient.create(), SesV2Client.create(),
-                System.getenv("TABELA_PROFESSORES"), System.getenv("EMAIL_ADMIN")));
+                System.getenv("TABELA_PROFESSORES"), System.getenv("EMAIL_ADMIN"),
+                System.getenv("EMAIL_ADMIN_ADICIONAL"), System.getenv("NOME_ADMIN_ADICIONAL")));
     }
 
     NotificarUrgencia(EmailCorporativo email) {
