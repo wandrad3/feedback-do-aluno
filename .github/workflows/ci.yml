@@ -93,6 +93,10 @@ jobs:
         run: |
           test -n "$TF_VAR_email_admin" && test -n "$TF_VAR_email_admin_adicional" && test -n "$TF_VAR_nome_admin_adicional" || { echo 'E-mails administrativos não configurados'; exit 1; }
           terraform -chdir=terraform/app init -backend-config="bucket=feedback-aluno-tfstate-315205584370" -backend-config="region=us-east-2"
+          if ! terraform -chdir=terraform/app state show 'module.plataforma.aws_sesv2_email_identity.admin_adicional' >/dev/null 2>&1 \
+             && aws sesv2 get-email-identity --email-identity "$TF_VAR_email_admin_adicional" >/dev/null 2>&1; then
+            terraform -chdir=terraform/app import 'module.plataforma.aws_sesv2_email_identity.admin_adicional' "$TF_VAR_email_admin_adicional"
+          fi
           terraform -chdir=terraform/app apply -auto-approve
           terraform -chdir=terraform/app output
 
