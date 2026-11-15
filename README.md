@@ -124,6 +124,16 @@ O grupo Cognito `Professores` controla `POST /professores/email`, `DELETE /profe
 
 O remetente SES em `EMAIL_ADMIN` precisa estar verificado. A conta SES está em **sandbox**: cada professor cadastrado recebe um link de verificação da AWS; somente endereços verificados recebem os alertas e relatórios HTML. O nome opcional cadastrado personaliza a saudação com **Prezado, professor Ana Silva,**. O modelo escapa o conteúdo das avaliações antes de inseri-lo no HTML. O endpoint manual valida o cadastro e a verificação SES do usuário autenticado e envia o relatório da **semana anterior** apenas a ele; o agendamento automático continua enviando ao administrador e aos professores verificados. O `202` da rota manual confirma o início do processamento assíncrono, não a entrega ao destinatário.
 
+### Dados fictícios para demonstração
+
+O workflow **Seed de demonstração** insere 14 avaliações fictícias distribuídas pelos sete dias da semana ISO anterior, calculada no horário de São Paulo. Os IDs são fixos por semana, e a gravação condicional permite reexecutar sem duplicar nem sobrescrever dados. A tabela usa apenas 1 unidade de escrita provisionada; o script espaça as operações e confirma a contagem no DynamoDB. Duas avaliações têm nota crítica e acionam os alertas normais do sistema. Com `enviar_relatorio=true`, o workflow invoca a Lambda de relatório após a inserção; ela envia o consolidado aos destinatários SES verificados. Para executar:
+
+```bash
+gh workflow run seed-demonstracao.yml -R wandrad3/feedback-do-aluno --ref main -f confirmacao=SEED-315205584370 -f enviar_relatorio=true
+```
+
+Para conferir datas e volume sem gravar, use `python scripts/seed_demonstracao.py --dry-run`.
+
 ## Usuário de demonstração
 
 O usuário `professor-demo` foi criado no User Pool e seu login foi validado. A senha forte está apenas no manual privado `D:\wstech\projetos\feedback-do-aluno-acesso-professores.md`, fora do Git e com acesso local restrito. Entregue esse arquivo aos professores por um canal privado. O `cognito_client_id` e a URL da API são identificadores públicos e podem constar do guia. Troque a senha ou exclua o usuário depois da avaliação.

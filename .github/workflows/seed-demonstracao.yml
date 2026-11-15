@@ -1,0 +1,46 @@
+name: Seed de demonstração
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacao:
+        description: "Para inserir avaliações fictícias, digite SEED-315205584370"
+        type: string
+        required: true
+      enviar_relatorio:
+        description: "Enviar o relatório da semana anterior após o seed"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: feedback-aluno-seed
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir confirmação
+        env:
+          CONFIRMACAO: ${{ inputs.confirmacao }}
+        run: test "$CONFIRMACAO" = "SEED-315205584370"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: arn:aws:iam::315205584370:role/feedback-aluno-github-deploy
+          aws-region: us-east-2
+      - name: Inserir dados fictícios e conferir o relatório
+        env:
+          ENVIAR_RELATORIO: ${{ inputs.enviar_relatorio }}
+        run: |
+          if [ "$ENVIAR_RELATORIO" = "true" ]; then
+            python3 scripts/seed_demonstracao.py --enviar-relatorio
+          else
+            python3 scripts/seed_demonstracao.py
+          fi
