@@ -45,7 +45,7 @@ def aws(*argumentos, aceitar_condicional=False):
         if "ProvisionedThroughputExceededException" in resultado.stderr:
             raise RuntimeError("throttling")
         raise RuntimeError(f"Falha em {argumentos[0]} {argumentos[1]} (código {resultado.returncode})")
-    return json.loads(resultado.stdout)
+    return json.loads(resultado.stdout) if resultado.stdout.strip() else {}
 
 
 def dados(agora):
